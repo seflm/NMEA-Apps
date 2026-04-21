@@ -50,8 +50,9 @@ header {
 }
 
 header h1 {
-  font-size: 0.9rem;
-  color: var(--accent);
+  font-size: 1rem;
+  font-weight: bold;
+  color: #ffffff;
   letter-spacing: 0.1em;
 }
 
@@ -59,8 +60,8 @@ header h1 {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 0.7rem;
-  color: var(--muted);
+  font-size: 0.75rem;
+  color: #cce4f0;
 }
 
 .dot {
@@ -91,16 +92,17 @@ header h1 {
 .ls-cell:last-child { border-right: none; }
 
 .ls-lbl {
-  font-size: 0.6rem;
-  color: var(--muted);
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: #7ab8d4;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.12em;
 }
 
 .ls-val {
-  font-size: 1.3rem;
-  font-weight: bold;
-  color: var(--accent);
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: #00d4ff;
   font-variant-numeric: tabular-nums;
 }
 
@@ -115,27 +117,28 @@ header h1 {
 }
 
 .mode-badge {
-  font-size: 0.75rem;
-  font-weight: bold;
-  letter-spacing: 0.18em;
-  padding: 5px 18px;
+  font-size: 0.85rem;
+  font-weight: 900;
+  letter-spacing: 0.2em;
+  padding: 6px 22px;
   border-radius: 20px;
   text-transform: uppercase;
-  background: rgba(0, 212, 255, 0.15);
-  color: var(--accent);
-  border: 1px solid var(--accent);
+  background: rgba(0, 212, 255, 0.22);
+  color: #00d4ff;
+  border: 2px solid #00d4ff;
 }
 
 .mode-badge.downwind {
-  background: rgba(255, 149, 0, 0.15);
-  color: var(--warn);
-  border-color: var(--warn);
+  background: rgba(255, 149, 0, 0.22);
+  color: #ff9500;
+  border-color: #ff9500;
 }
 
 .tack-label {
-  font-size: 0.7rem;
-  color: var(--muted);
-  letter-spacing: 0.12em;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: #cce4f0;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
@@ -151,68 +154,86 @@ header h1 {
 }
 
 .maneuver-title {
-  font-size: 0.75rem;
-  color: var(--muted);
-  letter-spacing: 0.14em;
+  font-size: 0.85rem;
+  font-weight: bold;
+  color: #cce4f0;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
   margin-bottom: 24px;
 }
 
 .range-display {
   display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 6px;
+  flex-direction: column;
+  gap: 0;
   width: 100%;
 }
 
-.rnum-wrap {
+.rrow {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  flex: 1;
+  align-items: flex-start;
+  padding: 12px 8px;
+}
+
+.rrow-sep {
+  height: 1px;
+  background: #1a3a5c;
+  width: 100%;
+}
+
+.rrow-nums {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
 }
 
 .faster-chip {
-  font-size: 0.6rem;
-  font-weight: bold;
-  letter-spacing: 0.14em;
+  font-size: 0.7rem;
+  font-weight: 900;
+  letter-spacing: 0.16em;
   text-transform: uppercase;
-  color: var(--good);
-  background: rgba(48, 209, 88, 0.12);
-  border: 1px solid var(--good);
+  color: #30d158;
+  background: rgba(48, 209, 88, 0.2);
+  border: 2px solid #30d158;
   border-radius: 10px;
-  padding: 2px 10px;
-  margin-bottom: 8px;
+  padding: 3px 12px;
+  margin-bottom: 6px;
 }
 
 .faster-chip.hidden { visibility: hidden; }
 
 .rnum {
-  font-size: 5.5rem;
-  font-weight: bold;
+  font-size: 6.5rem;
+  font-weight: 900;
   color: #ffffff;
   line-height: 1;
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.02em;
 }
 
-.rnum.dim { color: #6a9ab5; }
+.rnum.dim { color: #8bbdd4; }
 
 .runit {
-  font-size: 1.4rem;
-  color: var(--muted);
-  margin-top: 4px;
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: #cce4f0;
 }
 
-/* vertically center the dash with the number row (below the chip) */
-.range-sep {
-  font-size: 3rem;
-  color: var(--border);
-  flex-shrink: 0;
-  /* chip is ~1.2rem tall + 8px gap; align dash to mid of number */
-  padding-top: calc(1.2rem + 8px + 5.5rem * 0.25);
-  line-height: 1;
+.rdelta {
+  font-size: 2rem;
+  font-weight: bold;
+  color: #00d4ff;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.01em;
+}
+
+.rdelta.dim { color: #4a8aaa; }
+
+@media (max-width: 380px) {
+  .rnum { font-size: 4.5rem; }
+  .rdelta { font-size: 1.5rem; }
+  .ls-val { font-size: 1.2rem; }
 }
 
 /* ── Settings panel ─────────────────────────────────────────────────── */
@@ -346,16 +367,22 @@ header h1 {
 <div class="maneuver-section">
   <div class="maneuver-title" id="maneuverTitle">After TACK steer:</div>
   <div class="range-display">
-    <div class="rnum-wrap">
+    <div class="rrow">
       <div class="faster-chip" id="chipA">FASTER</div>
-      <div class="rnum" id="cogA">—</div>
-      <div class="runit">°</div>
+      <div class="rrow-nums">
+        <span class="rnum" id="cogA">—</span>
+        <span class="runit">°</span>
+        <span class="rdelta" id="deltaA">—</span>
+      </div>
     </div>
-    <div class="range-sep">—</div>
-    <div class="rnum-wrap">
+    <div class="rrow-sep"></div>
+    <div class="rrow">
       <div class="faster-chip hidden" id="chipB">FASTER</div>
-      <div class="rnum dim" id="cogB">—</div>
-      <div class="runit">°</div>
+      <div class="rrow-nums">
+        <span class="rnum dim" id="cogB">—</span>
+        <span class="runit">°</span>
+        <span class="rdelta dim" id="deltaB">—</span>
+      </div>
     </div>
   </div>
 </div>
@@ -417,6 +444,12 @@ function fmtDeg(v) {
   return Math.round(norm(v)).toString().padStart(3, '0');
 }
 
+function fmtDelta(from, to) {
+  if (from == null || to == null) return '—';
+  const d = Math.round(((to - from + 540) % 360) - 180);
+  return (d >= 0 ? '+' : '') + d + '°';
+}
+
 function updateDisplay(live) {
   const { cog, twa, twd } = live;
 
@@ -474,14 +507,17 @@ function updateDisplay(live) {
     }
   }
 
-  document.getElementById('cogA').textContent = fmtDeg(fastCog);
-  document.getElementById('cogB').textContent = fmtDeg(vmgCog);
+  document.getElementById('cogA').textContent   = fmtDeg(fastCog);
+  document.getElementById('cogB').textContent   = fmtDeg(vmgCog);
+  document.getElementById('deltaA').textContent = fmtDelta(cog, fastCog);
+  document.getElementById('deltaB').textContent = fmtDelta(cog, vmgCog);
 
-  // cogA is always the fast end — keep its chip visible, cogB hidden
-  document.getElementById('chipA').className = 'faster-chip';
-  document.getElementById('chipB').className = 'faster-chip hidden';
-  document.getElementById('cogA').className  = 'rnum';
-  document.getElementById('cogB').className  = 'rnum dim';
+  document.getElementById('chipA').className  = 'faster-chip';
+  document.getElementById('chipB').className  = 'faster-chip hidden';
+  document.getElementById('cogA').className   = 'rnum';
+  document.getElementById('cogB').className   = 'rnum dim';
+  document.getElementById('deltaA').className = 'rdelta';
+  document.getElementById('deltaB').className = 'rdelta dim';
 }
 
 function toggleSettings() {
