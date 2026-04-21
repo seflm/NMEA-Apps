@@ -12,7 +12,7 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font);
-  min-height: 100vh;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -22,22 +22,18 @@ body {
 header {
   background: var(--card);
   border-bottom: 1px solid var(--border);
-  padding: 12px 16px;
-  padding-top: max(12px, env(safe-area-inset-top));
+  padding: 0 16px;
+  padding-top: env(safe-area-inset-top);
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  height: 56px;
+  height: calc(52px + env(safe-area-inset-top));
 }
 
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.header-left { display: flex; align-items: center; gap: 6px; }
 
 .back-btn {
   background: transparent;
@@ -51,7 +47,7 @@ header {
 
 header h1 {
   font-size: 1rem;
-  font-weight: bold;
+  font-weight: 900;
   color: #ffffff;
   letter-spacing: 0.1em;
 }
@@ -62,57 +58,68 @@ header h1 {
   gap: 6px;
   font-size: 0.75rem;
   color: #cce4f0;
+  font-weight: bold;
 }
 
 .dot {
-  width: 8px;
-  height: 8px;
+  width: 9px; height: 9px;
   border-radius: 50%;
   background: var(--danger);
   flex-shrink: 0;
   transition: background 0.3s;
 }
-.dot.live  { background: var(--good); box-shadow: 0 0 6px var(--good); }
+.dot.live  { background: var(--good); box-shadow: 0 0 7px var(--good); }
 .dot.stale { background: var(--warn); }
 
-/* ── Live strip ─────────────────────────────────────────────────────── */
+/* ── Live strip (5 cells) ───────────────────────────────────────────── */
 .live-strip {
   background: var(--card);
-  border-bottom: 1px solid var(--border);
+  border-bottom: 2px solid var(--border);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   flex-shrink: 0;
 }
 
 .ls-cell {
-  padding: 8px 12px;
+  padding: 6px 4px;
   text-align: center;
   border-right: 1px solid var(--border);
 }
 .ls-cell:last-child { border-right: none; }
 
 .ls-lbl {
-  font-size: 0.65rem;
-  font-weight: bold;
+  font-size: 0.55rem;
+  font-weight: 900;
   color: #7ab8d4;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
 }
 
 .ls-val {
-  font-size: 1.5rem;
+  font-size: 1.25rem;
   font-weight: 900;
   color: #00d4ff;
   font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* ── Scrollable middle ──────────────────────────────────────────────── */
+.scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 }
 
 /* ── Mode badge ─────────────────────────────────────────────────────── */
 .mode-section {
-  padding: 14px 16px 10px;
+  padding: 10px 16px 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-shrink: 0;
 }
 
@@ -120,218 +127,627 @@ header h1 {
   font-size: 0.85rem;
   font-weight: 900;
   letter-spacing: 0.2em;
-  padding: 6px 22px;
+  padding: 5px 20px;
   border-radius: 20px;
   text-transform: uppercase;
-  background: rgba(0, 212, 255, 0.22);
+  background: rgba(0, 212, 255, 0.18);
   color: #00d4ff;
   border: 2px solid #00d4ff;
 }
 
 .mode-badge.downwind {
-  background: rgba(255, 149, 0, 0.22);
+  background: rgba(255, 149, 0, 0.18);
   color: #ff9500;
   border-color: #ff9500;
 }
 
 .tack-label {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: bold;
   color: #cce4f0;
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
 
-/* ── Main maneuver display ──────────────────────────────────────────── */
-.maneuver-section {
-  flex: 1;
+/* ── OPTIMAL section (primary display) ─────────────────────────────── */
+.optimal-section {
+  padding: 10px 16px 8px;
+  flex-shrink: 0;
+  border-bottom: 1px solid #1a3a5c;
+}
+
+.opt-header {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  justify-content: center;
-  padding: 12px 16px;
-  min-height: 0;
+  justify-content: space-between;
+  margin-bottom: 4px;
 }
 
-.maneuver-title {
-  font-size: 0.85rem;
-  font-weight: bold;
-  color: #cce4f0;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  margin-bottom: 24px;
-}
-
-.range-display {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  width: 100%;
-}
-
-.rrow {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  padding: 12px 8px;
-}
-
-.rrow-sep {
-  height: 1px;
-  background: #1a3a5c;
-  width: 100%;
-}
-
-.rrow-nums {
-  display: flex;
-  align-items: baseline;
-  gap: 14px;
-}
-
-.faster-chip {
-  font-size: 0.7rem;
+.opt-chip {
+  font-size: 0.65rem;
   font-weight: 900;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   color: #30d158;
-  background: rgba(48, 209, 88, 0.2);
+  background: rgba(48, 209, 88, 0.18);
   border: 2px solid #30d158;
   border-radius: 10px;
-  padding: 3px 12px;
-  margin-bottom: 6px;
+  padding: 2px 10px;
 }
 
-.faster-chip.hidden { visibility: hidden; }
+.opt-maneuver {
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: #7ab8d4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
 
-.rnum {
-  font-size: 6.5rem;
+.opt-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.opt-num {
+  font-size: 7rem;
   font-weight: 900;
   color: #ffffff;
-  line-height: 1;
+  line-height: 0.95;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
 }
 
-.rnum.dim { color: #8bbdd4; }
-
-.runit {
-  font-size: 1.6rem;
+.opt-deg {
+  font-size: 1.8rem;
   font-weight: bold;
   color: #cce4f0;
 }
 
-.rdelta {
-  font-size: 2rem;
-  font-weight: bold;
+.opt-delta {
+  font-size: 2.2rem;
+  font-weight: 900;
   color: #00d4ff;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.01em;
+  margin-left: auto;
 }
 
-.rdelta.dim { color: #4a8aaa; }
-
-@media (max-width: 380px) {
-  .rnum { font-size: 4.5rem; }
-  .rdelta { font-size: 1.5rem; }
-  .ls-val { font-size: 1.2rem; }
+.opt-sub {
+  font-size: 0.65rem;
+  color: #4a7a9b;
+  letter-spacing: 0.06em;
+  margin-top: 2px;
 }
 
-/* ── Settings panel ─────────────────────────────────────────────────── */
-.settings-wrap {
+/* ── Range section (secondary) ──────────────────────────────────────── */
+.range-section {
+  padding: 6px 16px 6px;
   flex-shrink: 0;
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid #1a3a5c;
+}
+
+.range-title {
+  font-size: 0.6rem;
+  font-weight: bold;
+  color: #4a7a9b;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-bottom: 4px;
+}
+
+.range-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.rng-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.rng-chip {
+  font-size: 0.55rem;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  min-width: 52px;
+}
+.rng-chip.fast { color: #30d158; }
+.rng-chip.vmg  { color: #7ab8d4; }
+
+.rng-num {
+  font-size: 2.8rem;
+  font-weight: 900;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+.rng-num.fast { color: #e0ffe8; }
+.rng-num.vmg  { color: #8bbdd4; }
+
+.rng-deg {
+  font-size: 0.9rem;
+  font-weight: bold;
+  color: #4a7a9b;
+}
+
+.rng-delta {
+  font-size: 1rem;
+  font-weight: bold;
+  font-variant-numeric: tabular-nums;
+  margin-left: 4px;
+}
+.rng-delta.fast { color: #30d158; }
+.rng-delta.vmg  { color: #4a8aaa; }
+
+/* ── VMC section ────────────────────────────────────────────────────── */
+.vmc-section {
+  padding: 8px 16px;
+  flex-shrink: 0;
+  background: rgba(0, 212, 255, 0.04);
+  border-bottom: 1px solid #1a3a5c;
+}
+
+.vmc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.vmc-lbl {
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: #7ab8d4;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.vmc-brg {
+  font-size: 0.85rem;
+  font-weight: 900;
+  color: #00d4ff;
+}
+
+.vmc-clear-btn {
+  margin-left: auto;
+  background: transparent;
+  border: 1px solid #1a3a5c;
+  border-radius: 4px;
+  color: #4a7a9b;
+  font-family: var(--font);
+  font-size: 0.7rem;
+  padding: 2px 8px;
+  cursor: pointer;
+}
+.vmc-clear-btn:hover { border-color: var(--danger); color: var(--danger); }
+
+.vmc-main {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.vmc-big {
+  font-size: 4rem;
+  font-weight: 900;
+  color: #30d158;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.vmc-big.away { color: #ff3b30; }
+
+.vmc-big-unit {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: #7ab8d4;
+}
+
+.vmc-sub {
+  font-size: 0.6rem;
+  color: #4a7a9b;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+/* ── Bottom panels ──────────────────────────────────────────────────── */
+.bottom-panels {
+  flex-shrink: 0;
+  border-top: 2px solid var(--border);
   padding-bottom: max(0px, env(safe-area-inset-bottom));
 }
 
-.settings-toggle {
+.panel-toggle {
   width: 100%;
   background: transparent;
   border: none;
-  color: var(--muted);
+  border-bottom: 1px solid var(--border);
+  color: #4a7a9b;
   font-family: var(--font);
   font-size: 0.65rem;
-  letter-spacing: 0.1em;
+  font-weight: bold;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  padding: 10px 16px;
-  text-align: center;
+  padding: 9px 16px;
+  text-align: left;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
+.panel-toggle:last-child { border-bottom: none; }
+.panel-toggle:hover { color: #00d4ff; }
 
-.settings-toggle:hover { color: var(--accent); }
+.panel-toggle .arrow { font-size: 0.8rem; }
 
-.settings-body {
+.panel-body {
   display: none;
-  padding: 12px 16px;
+  padding: 10px 16px;
   padding-left: max(16px, env(safe-area-inset-left));
   padding-right: max(16px, env(safe-area-inset-right));
-  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
   background: var(--card);
   gap: 8px;
   flex-direction: column;
 }
+.panel-body.open { display: flex; }
 
-.settings-body.open { display: flex; }
-
-.settings-row {
+.p-row {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-.settings-row label {
+.p-row label {
   font-size: 0.65rem;
-  color: var(--muted);
+  color: #7ab8d4;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   white-space: nowrap;
-  min-width: 36px;
+  min-width: 44px;
+  font-weight: bold;
 }
 
-.settings-row input {
+.p-row input {
   flex: 1;
   background: var(--bg);
   border: 1px solid var(--border);
   border-radius: 6px;
-  color: var(--text);
+  color: #ffffff;
   font-family: var(--font);
-  font-size: 0.85rem;
-  padding: 6px 10px;
+  font-size: 1rem;
+  font-weight: bold;
+  padding: 7px 10px;
 }
+.p-row input:focus { outline: none; border-color: #00d4ff; }
 
-.settings-row input:focus {
-  outline: none;
-  border-color: var(--accent);
-}
-
-.connect-btn {
-  background: var(--accent);
-  color: var(--bg);
+.p-btn {
   border: none;
   border-radius: 6px;
   font-family: var(--font);
   font-size: 0.75rem;
-  font-weight: bold;
+  font-weight: 900;
   letter-spacing: 0.1em;
   padding: 8px 16px;
   cursor: pointer;
-  align-self: stretch;
   text-transform: uppercase;
+  white-space: nowrap;
+}
+.p-btn.primary { background: #00d4ff; color: var(--bg); }
+.p-btn.primary:active { opacity: 0.8; }
+
+.mark-info {
+  font-size: 0.65rem;
+  color: #4a7a9b;
+  letter-spacing: 0.05em;
+}
+.mark-info span { color: #7ab8d4; }
+
+/* ── Responsive ─────────────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .opt-num { font-size: 5.5rem; }
+  .opt-delta { font-size: 1.8rem; }
+  .rng-num { font-size: 2.2rem; }
+  .ls-val { font-size: 1rem; }
 }
 
-.connect-btn:active { opacity: 0.8; }
+@media (max-height: 640px) {
+  .opt-num { font-size: 5.5rem; }
+  .mode-section { padding: 6px 16px 4px; }
+  .optimal-section { padding: 6px 16px 6px; }
+}
 
-/* ── Mobile adjustments ─────────────────────────────────────────────── */
-@media (max-width: 380px) {
-  .rnum { font-size: 4rem; }
-  .ls-val { font-size: 1.1rem; }
+/* ── Mark modal ─────────────────────────────────────────────────────── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(7, 15, 28, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 24px;
+  padding-bottom: max(24px, env(safe-area-inset-bottom));
+}
+.modal-overlay.hidden { display: none; }
+
+.modal {
+  background: #0c1a2e;
+  border: 2px solid #1a3a5c;
+  border-radius: 24px;
+  padding: 28px 20px 24px;
+  width: 100%;
+  max-width: 380px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.modal-title {
+  font-size: 0.7rem;
+  font-weight: 900;
+  color: #7ab8d4;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  text-align: center;
+}
+
+/* The big bearing input — styled to look like a display */
+.modal-display {
+  background: #070f1c;
+  border: 2px solid #1a3a5c;
+  border-radius: 16px;
+  padding: 12px 16px 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0;
+  transition: border-color 0.15s;
+}
+.modal-display:focus-within { border-color: #00d4ff; }
+
+.modal-brg-input {
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #ffffff;
+  font-family: var(--font);
+  font-size: 6.5rem;
+  font-weight: 900;
+  line-height: 1;
+  width: 100%;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+  -moz-appearance: textfield;
+}
+.modal-brg-input::-webkit-outer-spin-button,
+.modal-brg-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+
+.modal-deg-label {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #7ab8d4;
+  margin-top: -4px;
+}
+
+.modal-hint {
+  font-size: 0.55rem;
+  color: #2a5a7c;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 6px;
+}
+
+/* Nudge buttons */
+.nudge-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+}
+
+.nudge-btn {
+  background: #070f1c;
+  border: 2px solid #1a3a5c;
+  border-radius: 12px;
+  color: #cce4f0;
+  font-family: var(--font);
+  font-size: 1.4rem;
+  font-weight: 900;
+  padding: 16px 0;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: border-color 0.1s, background 0.1s, color 0.1s;
+}
+.nudge-btn:active {
+  border-color: #00d4ff;
+  background: rgba(0, 212, 255, 0.12);
+  color: #00d4ff;
+}
+
+.nudge-label {
+  font-size: 0.55rem;
+  color: #4a7a9b;
+  letter-spacing: 0.1em;
+  text-align: center;
+  text-transform: uppercase;
+  margin-top: -6px;
+}
+
+/* Action buttons */
+.modal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.modal-btn {
+  padding: 18px;
+  border-radius: 14px;
+  font-family: var(--font);
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+}
+.modal-btn.cancel {
+  background: transparent;
+  border: 2px solid #1a3a5c;
+  color: #7ab8d4;
+}
+.modal-btn.cancel:active { background: rgba(255,255,255,0.04); }
+.modal-btn.set {
+  background: #00d4ff;
+  color: #070f1c;
+}
+.modal-btn.set:active { opacity: 0.82; }
+
+/* ── Mark section ───────────────────────────────────────────────────── */
+.mark-section {
+  padding: 12px 16px 16px;
+  flex-shrink: 0;
+}
+
+.mark-set-btn {
+  width: 100%;
+  background: transparent;
+  border: 2px solid #1a3a5c;
+  border-radius: 14px;
+  color: #00d4ff;
+  font-family: var(--font);
+  font-size: 1.1rem;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.mark-set-btn:active {
+  border-color: #00d4ff;
+  background: rgba(0, 212, 255, 0.08);
+}
+
+.mark-active {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 212, 255, 0.06);
+  border: 2px solid #00d4ff;
+  border-radius: 14px;
+  padding: 14px 16px;
+  gap: 12px;
+}
+
+.mark-active-left { flex: 1; }
+
+.mark-active-lbl {
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: #7ab8d4;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+}
+
+.mark-active-brg {
+  font-size: 2.4rem;
+  font-weight: 900;
+  color: #00d4ff;
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+.mark-active-pos {
+  font-size: 0.6rem;
+  color: #4a7a9b;
+  margin-top: 2px;
+}
+
+.mark-active-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.mark-edit-btn, .mark-clr-btn {
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  border: none;
+}
+
+.mark-edit-btn {
+  background: rgba(0, 212, 255, 0.15);
+  color: #00d4ff;
+  border: 1px solid #00d4ff;
+}
+.mark-edit-btn:active { background: rgba(0, 212, 255, 0.3); }
+
+.mark-clr-btn {
+  background: rgba(255, 59, 48, 0.12);
+  color: #ff3b30;
+  border: 1px solid #ff3b30;
+}
+.mark-clr-btn:active { background: rgba(255, 59, 48, 0.25); }
+
+/* Trigger label (when mark is set) */
+.opt-trigger {
+  font-size: 0.65rem;
+  font-weight: 900;
+  color: #00d4ff;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+/* VMC info line */
+.opt-vmc {
+  margin-top: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+}
+.opt-vmc-val {
+  font-size: 1.6rem;
+  font-weight: 900;
+  color: #30d158;
+  font-variant-numeric: tabular-nums;
+}
+.opt-vmc-val.away { color: #ff3b30; }
+.opt-vmc-unit {
+  font-size: 0.75rem;
+  font-weight: bold;
+  color: #4a7a9b;
+  margin-left: 4px;
+}
+.opt-vmc-mark {
+  font-size: 0.65rem;
+  color: #4a7a9b;
+  margin-left: 8px;
+  letter-spacing: 0.05em;
 }
 </style>
 </head>
 <body>
 
+<!-- ── Header ──────────────────────────────────────────────────────── -->
 <header>
   <div class="header-left">
-    <button class="back-btn" onclick="history.length > 1 ? history.back() : location.href='index.html'">←</button>
+    <button class="back-btn" onclick="history.length>1?history.back():location.href='index.html'">←</button>
     <h1>TACK GUIDE</h1>
   </div>
   <div class="conn-wrap">
@@ -340,86 +756,187 @@ header h1 {
   </div>
 </header>
 
+<!-- ── Live strip ──────────────────────────────────────────────────── -->
 <div class="live-strip">
-  <div class="ls-cell">
-    <div class="ls-lbl">COG</div>
-    <div class="ls-val" id="lsCog">—</div>
-  </div>
-  <div class="ls-cell">
-    <div class="ls-lbl">TWA</div>
-    <div class="ls-val" id="lsTwa">—</div>
-  </div>
-  <div class="ls-cell">
-    <div class="ls-lbl">TWD</div>
-    <div class="ls-val" id="lsTwd">—</div>
-  </div>
-  <div class="ls-cell">
-    <div class="ls-lbl">AWA</div>
-    <div class="ls-val" id="lsAwa">—</div>
-  </div>
+  <div class="ls-cell"><div class="ls-lbl">COG</div><div class="ls-val" id="lsCog">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">TWA</div><div class="ls-val" id="lsTwa">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">TWD</div><div class="ls-val" id="lsTwd">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">TWS</div><div class="ls-val" id="lsTws">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">AWA</div><div class="ls-val" id="lsAwa">—</div></div>
 </div>
 
-<div class="mode-section">
-  <div class="mode-badge" id="modeBadge">—</div>
-  <div class="tack-label" id="tackLabel">waiting for data</div>
-</div>
+<!-- ── Scrollable main content ─────────────────────────────────────── -->
+<div class="scroll-area">
 
-<div class="maneuver-section">
-  <div class="maneuver-title" id="maneuverTitle">After TACK steer:</div>
-  <div class="range-display">
-    <div class="rrow">
-      <div class="faster-chip" id="chipA">FASTER</div>
-      <div class="rrow-nums">
-        <span class="rnum" id="cogA">—</span>
-        <span class="runit">°</span>
-        <span class="rdelta" id="deltaA">—</span>
-      </div>
+  <!-- Mode -->
+  <div class="mode-section">
+    <div class="mode-badge" id="modeBadge">—</div>
+    <div class="tack-label" id="tackLabel">waiting for data</div>
+  </div>
+
+  <!-- PRIMARY: TACK/GYBE trigger COG -->
+  <div class="optimal-section">
+    <div class="opt-header">
+      <span class="opt-chip" id="optChip">OPTIMAL</span>
+      <span class="opt-maneuver" id="optManeuver">After TACK:</span>
     </div>
-    <div class="rrow-sep"></div>
-    <div class="rrow">
-      <div class="faster-chip hidden" id="chipB">FASTER</div>
-      <div class="rrow-nums">
-        <span class="rnum dim" id="cogB">—</span>
-        <span class="runit">°</span>
-        <span class="rdelta dim" id="deltaB">—</span>
-      </div>
+    <!-- Mark-mode label — shown instead of header when mark is set -->
+    <div class="opt-trigger" id="optTrigger" style="display:none">
+      TACK WHEN MARK BEARS:
+    </div>
+    <div class="opt-row">
+      <span class="opt-num" id="optCog">—</span>
+      <span class="opt-deg">°</span>
+      <span class="opt-delta" id="optDelta">—</span>
+    </div>
+    <div class="opt-sub" id="optSub">— TWA · — kt TWS</div>
+    <!-- VMC info line — only when mark is set -->
+    <div class="opt-vmc" id="optVmcRow" style="display:none">
+      <span class="opt-vmc-val" id="optVmcVal">—</span>
+      <span class="opt-vmc-unit"> kt closing mark</span>
+      <span class="opt-vmc-mark" id="optVmcMark"></span>
     </div>
   </div>
-</div>
 
-<div class="settings-wrap">
-  <button class="settings-toggle" id="settingsToggle" onclick="toggleSettings()">▾ MQTT SETTINGS</button>
-  <div class="settings-body" id="settingsBody">
-    <div class="settings-row">
+  <!-- Range (secondary) -->
+  <div class="range-section">
+    <div class="range-title">Acceptable range (polar limits)</div>
+    <div class="range-rows">
+      <div class="rng-row">
+        <span class="rng-chip fast">FASTER</span>
+        <span class="rng-num fast" id="rngFast">—</span>
+        <span class="rng-deg">°</span>
+        <span class="rng-delta fast" id="rngDeltaFast">—</span>
+      </div>
+      <div class="rng-row">
+        <span class="rng-chip vmg">VMG</span>
+        <span class="rng-num vmg" id="rngVmg">—</span>
+        <span class="rng-deg">°</span>
+        <span class="rng-delta vmg" id="rngDeltaVmg">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mark button / status -->
+  <div class="mark-section">
+    <!-- No mark: big set button -->
+    <button class="mark-set-btn" id="markSetBtn" onclick="openMarkModal()">
+      ⊕ SET MARK BEARING
+    </button>
+    <!-- Mark active: bearing display + clear -->
+    <div class="mark-active" id="markActive" style="display:none">
+      <div class="mark-active-left">
+        <div class="mark-active-lbl">MARK BEARING</div>
+        <div class="mark-active-brg" id="markActiveBrg">—°</div>
+        <div class="mark-active-pos" id="markActivePos"></div>
+      </div>
+      <div class="mark-active-right">
+        <button class="mark-edit-btn" onclick="openMarkModal()">EDIT</button>
+        <button class="mark-clr-btn" onclick="clearMark()">CLEAR</button>
+      </div>
+    </div>
+  </div>
+
+</div><!-- end scroll-area -->
+
+<!-- ── Bottom panels ────────────────────────────────────────────────── -->
+<div class="bottom-panels">
+
+  <!-- MQTT -->
+  <button class="panel-toggle" id="mqttToggle" onclick="togglePanel('mqtt')">
+    <span>MQTT SETTINGS</span><span class="arrow" id="mqttArrow">▾</span>
+  </button>
+  <div class="panel-body" id="mqttBody">
+    <div class="p-row">
       <label>Host</label>
       <input type="text" id="mqttHost" placeholder="esp-nmea.local">
     </div>
-    <div class="settings-row">
+    <div class="p-row">
       <label>Port</label>
       <input type="number" id="mqttPort" placeholder="9001" style="max-width:90px">
-      <button class="connect-btn" onclick="doConnect()">Connect</button>
+      <button class="p-btn primary" onclick="doConnect()">Connect</button>
     </div>
+  </div>
+
+</div>
+
+<!-- ── Mark modal ────────────────────────────────────────────────────── -->
+<div class="modal-overlay hidden" id="markModal" onclick="if(event.target===this)closeMarkModal()">
+  <div class="modal">
+
+    <div class="modal-title">Set mark bearing</div>
+
+    <!-- Big bearing display / input -->
+    <div class="modal-display">
+      <input class="modal-brg-input" type="number" id="modalBrgInput"
+             min="0" max="359" inputmode="numeric" placeholder="000">
+      <div class="modal-deg-label">degrees</div>
+      <div class="modal-hint">tap number to type · use buttons to nudge</div>
+    </div>
+
+    <!-- Nudge buttons -->
+    <div>
+      <div class="nudge-row">
+        <button class="nudge-btn" onclick="nudge(-10)">−10</button>
+        <button class="nudge-btn" onclick="nudge(-1)">−1</button>
+        <button class="nudge-btn" onclick="nudge(+1)">+1</button>
+        <button class="nudge-btn" onclick="nudge(+10)">+10</button>
+      </div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="modal-actions">
+      <button class="modal-btn cancel" onclick="closeMarkModal()">Cancel</button>
+      <button class="modal-btn set" onclick="confirmSetMark()">Set mark</button>
+    </div>
+
   </div>
 </div>
 
+<!-- ── Scripts ───────────────────────────────────────────────────────── -->
 <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
 <script src="shared/race-core.js"></script>
 <script>
 'use strict';
 
-// First 36 polar constants
-const UPWIND_FAST_TWA    = 65;   // faster boat speed (wider angle)
-const UPWIND_VMG_TWA     = 45;   // better VMG (tighter to wind)
-const DOWNWIND_FAST_TWA  = 130;  // faster boat speed (closer to reach)
-const DOWNWIND_VMG_TWA   = 150;  // better VMG (deeper downwind)
+// ── First 36 polar table (from CSV) ────────────────────────────────────
+const POLAR = {
+  tws:  [4,    6,    8,    10,   12,   14,   16,   20,   24],
+  beat: {
+    twa: [46.5, 44.3, 41.9, 40.2, 38.7, 38.7, 39.1, 38.6, 39.8],
+    sog: [3.53, 4.89, 5.79, 6.42, 6.78, 7.01, 7.16, 7.19, 7.21]
+  },
+  run: {
+    twa: [139.4, 142.4, 146.2, 148.1, 152.1, 152.8, 150.7, 144.5, 142.3],
+    sog: [3.58,  5.00,  6.02,  6.96,  7.50,  7.97,  8.67, 10.85, 14.59]
+  }
+};
 
+// Fixed range limits (used for the secondary range display)
+const UPWIND_FAST_TWA   = 65;
+const UPWIND_VMG_TWA    = 45;
+const DOWNWIND_FAST_TWA = 130;
+const DOWNWIND_VMG_TWA  = 150;
+
+// ── Mark state ──────────────────────────────────────────────────────────
+const MARK_KEY = 'tackGuide_mark';
+let mark = null;        // { bearing, lat, lon } or null
+try { mark = JSON.parse(localStorage.getItem(MARK_KEY)); } catch(e) {}
+
+// ── Live data ───────────────────────────────────────────────────────────
+let _live = {};
+
+// ── Init ────────────────────────────────────────────────────────────────
 const state = RaceCore.loadState();
-let settingsOpen = false;
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('mqttHost').value = state.mqtt.host || 'esp-nmea.local';
   document.getElementById('mqttPort').value = state.mqtt.port || 9001;
 
+  // Load full polar for VMC sweep (first36.json already ships with the app)
+  RaceCore.loadPolar('first36.json');
+
+  applyMarkState();
   RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
 
   RaceCore.on('connect', () => {
@@ -432,12 +949,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('connLbl').textContent = 'OFF';
   });
 
-  RaceCore.on('data', ({ live }) => updateDisplay(live));
+  RaceCore.on('data', ({ live }) => { _live = live; updateDisplay(live); });
 });
 
-function norm(deg) {
-  return ((deg % 360) + 360) % 360;
+// ── Polar interpolation ─────────────────────────────────────────────────
+function interpPolar(table, tws) {
+  const pts = POLAR.tws;
+  if (tws == null || isNaN(tws)) return null;
+  tws = Math.max(pts[0], Math.min(pts[pts.length - 1], tws));
+  for (let i = 0; i < pts.length - 1; i++) {
+    if (tws >= pts[i] && tws <= pts[i + 1]) {
+      const t = (tws - pts[i]) / (pts[i + 1] - pts[i]);
+      return {
+        twa: table.twa[i] + t * (table.twa[i + 1] - table.twa[i]),
+        sog: table.sog[i] + t * (table.sog[i + 1] - table.sog[i])
+      };
+    }
+  }
+  return null;
 }
+
+// ── Helpers ─────────────────────────────────────────────────────────────
+function norm(d)  { return ((d % 360) + 360) % 360; }
 
 function fmtDeg(v) {
   if (v == null || isNaN(v)) return '—';
@@ -445,89 +978,238 @@ function fmtDeg(v) {
 }
 
 function fmtDelta(from, to) {
-  if (from == null || to == null) return '—';
+  if (from == null || to == null || isNaN(from) || isNaN(to)) return '—';
   const d = Math.round(((to - from + 540) % 360) - 180);
   return (d >= 0 ? '+' : '') + d + '°';
 }
 
-function updateDisplay(live) {
-  const { cog, twa, twd } = live;
+function fmtSignedDeg(v) {
+  if (v == null || isNaN(v)) return '—';
+  const d = Math.round(((v + 540) % 360) - 180);
+  return (d >= 0 ? '+' : '') + d + '°';
+}
 
+function cogDiffRad(a, b) {
+  return (((a - b + 540) % 360) - 180) * Math.PI / 180;
+}
+
+// ── VMC-optimal post-tack COG via full polar sweep ──────────────────────
+// Sweeps all TWA values on the post-tack side and finds the one that
+// maximises SOG × cos(COG − markBearing). Returns { cog, twa, vmc, sog }.
+function findVmcOptimalCog(twd, tws, markBearing, isUpwind, onPort) {
+  // Post-tack sign: if currently on port → next tack is starboard (COG = TWD − TWA)
+  //                 if currently on stbd → next tack is port    (COG = TWD + TWA)
+  const sign   = onPort ? -1 : +1;
+  const twaMin = isUpwind ? 20 : 90;
+  const twaMax = isUpwind ? 85 : 170;
+
+  let bestVmc = -Infinity, bestTwa = null, bestSog = 0;
+
+  for (let twa = twaMin; twa <= twaMax; twa++) {
+    const sog = RaceCore.interpSpeed(twa, tws);
+    if (!sog || sog <= 0) continue;
+    const cog = norm(twd + sign * twa);
+    const vmc = sog * Math.cos(cogDiffRad(cog, markBearing));
+    if (vmc > bestVmc) { bestVmc = vmc; bestTwa = twa; bestSog = sog; }
+  }
+
+  if (bestTwa === null) return null;
+  return {
+    cog: norm(twd + sign * bestTwa),
+    twa: bestTwa,
+    vmc: bestVmc,
+    sog: bestSog
+  };
+}
+
+// ── Main display update ─────────────────────────────────────────────────
+function updateDisplay(live) {
+  const { cog, twa, twd, tws } = live;
+  const awa = live.awa;
+
+  // Live strip
   document.getElementById('lsCog').textContent = cog != null ? fmtDeg(cog) + '°' : '—';
   document.getElementById('lsTwd').textContent = twd != null ? fmtDeg(twd) + '°' : '—';
-  const awa = live.awa;
-  document.getElementById('lsAwa').textContent = awa != null ? (awa >= 0 ? '+' : '') + Math.round(awa) + '°' : '—';
+  document.getElementById('lsTws').textContent = tws != null ? tws.toFixed(1) : '—';
+  document.getElementById('lsAwa').textContent = fmtSignedDeg(awa);
 
   if (twa == null || twd == null) {
     document.getElementById('lsTwa').textContent = '—';
     document.getElementById('modeBadge').textContent = '—';
     document.getElementById('modeBadge').className = 'mode-badge';
     document.getElementById('tackLabel').textContent = 'waiting for data';
-    document.getElementById('maneuverTitle').textContent = 'After TACK steer:';
-    document.getElementById('cogA').textContent = '—';
-    document.getElementById('cogB').textContent = '—';
+    clearNumbers();
     return;
   }
 
-  // TWA: 0–360 where >180 = port tack (race-core convention)
+  // Tack detection (race-core convention: twa 0–360, >180 = port)
   const twAbs   = twa <= 180 ? twa : 360 - twa;
   const onPort  = twa > 180;
   const isUpwind = twAbs < 90;
 
-  const twaSigned = onPort ? -Math.round(twAbs) : Math.round(twAbs);
-  document.getElementById('lsTwa').textContent = (twaSigned >= 0 ? '+' : '') + twaSigned + '°';
+  document.getElementById('lsTwa').textContent =
+    (onPort ? '-' : '+') + Math.round(twAbs) + '°';
 
+  // Mode badge
   const badge = document.getElementById('modeBadge');
   badge.textContent = isUpwind ? 'UPWIND' : 'DOWNWIND';
   badge.className   = 'mode-badge' + (isUpwind ? '' : ' downwind');
 
-  const side = onPort ? 'PORT' : 'STARBOARD';
-  document.getElementById('tackLabel').textContent = side + (isUpwind ? ' TACK' : ' GYBE');
-  document.getElementById('maneuverTitle').textContent = 'After ' + (isUpwind ? 'TACK' : 'GYBE') + ' steer:';
+  const maneuver = isUpwind ? 'TACK' : 'GYBE';
+  const side     = onPort ? 'PORT' : 'STARBOARD';
+  document.getElementById('tackLabel').textContent = side + ' ' + maneuver;
 
-  // Calculate post-maneuver COG range.
-  // Faster end is always shown left (cogA), VMG end right (cogB).
-  let fastCog, vmgCog;
+  // ── Primary COG: VMC-optimal when mark set, polar-VMG otherwise ──────
+  const polar = interpPolar(isUpwind ? POLAR.beat : POLAR.run, tws);
+  let   optCog = null;
+  const hasVmc = mark && tws != null;
 
-  if (isUpwind) {
-    if (onPort) {
-      fastCog = norm(twd - UPWIND_FAST_TWA);
-      vmgCog  = norm(twd - UPWIND_VMG_TWA);
-    } else {
-      fastCog = norm(twd + UPWIND_FAST_TWA);
-      vmgCog  = norm(twd + UPWIND_VMG_TWA);
+  const trigger   = document.getElementById('optTrigger');
+  const optHeader = document.getElementById('optChip').parentElement;
+  const vmcRow    = document.getElementById('optVmcRow');
+
+  if (hasVmc) {
+    // Full polar sweep for VMC-optimal post-tack COG
+    const vmc = findVmcOptimalCog(twd, tws, mark.bearing, isUpwind, onPort);
+    if (vmc) {
+      optCog = vmc.cog;
+      trigger.style.display   = '';
+      trigger.textContent      = maneuver + ' WHEN MARK BEARS:';
+      optHeader.style.display  = 'none';
+
+      document.getElementById('optCog').textContent   = fmtDeg(optCog);
+      document.getElementById('optDelta').textContent = fmtDelta(cog, optCog);
+      document.getElementById('optSub').textContent   =
+        vmc.twa.toFixed(0) + '° TWA · ' + vmc.sog.toFixed(2) + ' kt · ' +
+        (tws ? tws.toFixed(1) : '—') + ' kt TWS';
+
+      const vmcVal = document.getElementById('optVmcVal');
+      vmcVal.textContent = (vmc.vmc >= 0 ? '+' : '') + vmc.vmc.toFixed(1);
+      vmcVal.className   = 'opt-vmc-val' + (vmc.vmc < 0 ? ' away' : '');
+      document.getElementById('optVmcMark').textContent = '→ mark ' + Math.round(mark.bearing) + '°';
+      vmcRow.style.display = '';
     }
   } else {
-    if (onPort) {
-      fastCog = norm(twd - DOWNWIND_FAST_TWA);
-      vmgCog  = norm(twd - DOWNWIND_VMG_TWA);
+    // No mark — show polar-VMG optimal
+    trigger.style.display  = 'none';
+    optHeader.style.display = '';
+    vmcRow.style.display   = 'none';
+    document.getElementById('optManeuver').textContent = 'After ' + maneuver + ':';
+
+    if (polar) {
+      optCog = onPort ? norm(twd - polar.twa) : norm(twd + polar.twa);
+      document.getElementById('optCog').textContent   = fmtDeg(optCog);
+      document.getElementById('optDelta').textContent = fmtDelta(cog, optCog);
+      document.getElementById('optSub').textContent   =
+        polar.twa.toFixed(1) + '° TWA · ' + (tws ? tws.toFixed(1) : '—') + ' kt TWS · ' +
+        polar.sog.toFixed(2) + ' kt polar  (set mark for VMC)';
     } else {
-      fastCog = norm(twd + DOWNWIND_FAST_TWA);
-      vmgCog  = norm(twd + DOWNWIND_VMG_TWA);
+      document.getElementById('optCog').textContent   = '—';
+      document.getElementById('optDelta').textContent = '—';
+      document.getElementById('optSub').textContent   = 'no TWS data — set mark for VMC';
     }
   }
 
-  document.getElementById('cogA').textContent   = fmtDeg(fastCog);
-  document.getElementById('cogB').textContent   = fmtDeg(vmgCog);
-  document.getElementById('deltaA').textContent = fmtDelta(cog, fastCog);
-  document.getElementById('deltaB').textContent = fmtDelta(cog, vmgCog);
-
-  document.getElementById('chipA').className  = 'faster-chip';
-  document.getElementById('chipB').className  = 'faster-chip hidden';
-  document.getElementById('cogA').className   = 'rnum';
-  document.getElementById('cogB').className   = 'rnum dim';
-  document.getElementById('deltaA').className = 'rdelta';
-  document.getElementById('deltaB').className = 'rdelta dim';
+  // ── Fixed range COGs (secondary) ─────────────────────────────────────
+  let fastCog, vmgCog;
+  if (isUpwind) {
+    fastCog = onPort ? norm(twd - UPWIND_FAST_TWA) : norm(twd + UPWIND_FAST_TWA);
+    vmgCog  = onPort ? norm(twd - UPWIND_VMG_TWA)  : norm(twd + UPWIND_VMG_TWA);
+  } else {
+    fastCog = onPort ? norm(twd - DOWNWIND_FAST_TWA) : norm(twd + DOWNWIND_FAST_TWA);
+    vmgCog  = onPort ? norm(twd - DOWNWIND_VMG_TWA)  : norm(twd + DOWNWIND_VMG_TWA);
+  }
+  document.getElementById('rngFast').textContent      = fmtDeg(fastCog);
+  document.getElementById('rngVmg').textContent       = fmtDeg(vmgCog);
+  document.getElementById('rngDeltaFast').textContent = fmtDelta(cog, fastCog);
+  document.getElementById('rngDeltaVmg').textContent  = fmtDelta(cog, vmgCog);
 }
 
-function toggleSettings() {
-  settingsOpen = !settingsOpen;
-  document.getElementById('settingsBody').className =
-    'settings-body' + (settingsOpen ? ' open' : '');
-  document.getElementById('settingsToggle').textContent =
-    (settingsOpen ? '▴' : '▾') + ' MQTT SETTINGS';
+function clearNumbers() {
+  ['optCog','optDelta','optSub','optVmcVal',
+   'rngFast','rngVmg','rngDeltaFast','rngDeltaVmg'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = '—';
+  });
+  document.getElementById('optVmcRow').style.display  = 'none';
+  document.getElementById('optTrigger').style.display = 'none';
+  document.getElementById('optChip').parentElement.style.display = '';
 }
 
+// ── Mark modal ───────────────────────────────────────────────────────────
+function openMarkModal() {
+  const input = document.getElementById('modalBrgInput');
+  // Pre-fill with existing mark bearing or blank
+  input.value = mark ? Math.round(mark.bearing) : '';
+  document.getElementById('markModal').classList.remove('hidden');
+  // Small delay so modal renders before focusing (avoids keyboard quirks)
+  setTimeout(() => input.focus(), 80);
+}
+
+function closeMarkModal() {
+  document.getElementById('markModal').classList.add('hidden');
+}
+
+function nudge(delta) {
+  const input = document.getElementById('modalBrgInput');
+  const cur   = parseInt(input.value, 10);
+  const base  = isNaN(cur) ? 0 : cur;
+  input.value = ((base + delta) % 360 + 360) % 360;
+}
+
+function confirmSetMark() {
+  const input = document.getElementById('modalBrgInput');
+  const brg   = parseInt(input.value, 10);
+  if (isNaN(brg)) {
+    input.style.color = '#ff3b30';
+    setTimeout(() => input.style.color = '', 800);
+    return;
+  }
+  mark = {
+    bearing: ((brg % 360) + 360) % 360,
+    lat: _live.lat ?? null,
+    lon: _live.lon ?? null
+  };
+  localStorage.setItem(MARK_KEY, JSON.stringify(mark));
+  applyMarkState();
+  closeMarkModal();
+}
+
+function clearMark() {
+  mark = null;
+  localStorage.removeItem(MARK_KEY);
+  applyMarkState();
+}
+
+function applyMarkState() {
+  const setBtn  = document.getElementById('markSetBtn');
+  const active  = document.getElementById('markActive');
+  if (mark) {
+    setBtn.style.display  = 'none';
+    active.style.display  = '';
+    document.getElementById('markActiveBrg').textContent =
+      Math.round(mark.bearing) + '°';
+    document.getElementById('markActivePos').textContent =
+      (mark.lat != null && mark.lon != null)
+        ? 'set at ' + mark.lat.toFixed(3) + '°N ' + mark.lon.toFixed(3) + '°E'
+        : '';
+  } else {
+    setBtn.style.display  = '';
+    active.style.display  = 'none';
+  }
+}
+
+// ── MQTT panel toggle ────────────────────────────────────────────────────
+let mqttOpen = false;
+function togglePanel(name) {
+  if (name === 'mqtt') {
+    mqttOpen = !mqttOpen;
+    document.getElementById('mqttBody').className  = 'panel-body' + (mqttOpen ? ' open' : '');
+    document.getElementById('mqttArrow').textContent = mqttOpen ? '▴' : '▾';
+  }
+}
+
+// ── MQTT ─────────────────────────────────────────────────────────────────
 function doConnect() {
   const host = document.getElementById('mqttHost').value.trim() || 'esp-nmea.local';
   const port  = parseInt(document.getElementById('mqttPort').value, 10) || 9001;

@@ -1,7 +1,7 @@
 /**
  * race-core.js — Race Assistant v2 shared module
  * Uses MQTT.js over WebSocket; state schema v4 (universal lines + waypoints).
- * Requires:  <script src="shared/mqtt.min.js"></script>
+ * Requires:  <script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
  */
 (function (global) {
 'use strict';
@@ -876,7 +876,7 @@ function off(event, cb) {
 
 function mqttConnect(host, port) {
   if (typeof mqtt === 'undefined') {
-    console.error('[RaceCore] mqtt.js not loaded — check shared/mqtt.min.js');
+    console.error('[RaceCore] mqtt.js not loaded — check mqtt CDN script include');
     return;
   }
 
