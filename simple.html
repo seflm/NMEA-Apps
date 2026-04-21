@@ -3,9 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="format-detection" content="telephone=no">
 <title>Sailing Data</title>
 <link rel="stylesheet" href="shared/race-theme.css">
 <style>
@@ -297,7 +294,7 @@ main {
 </main>
 
 <!-- Scripts -->
-<script src="shared/mqtt.min.js"></script>
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
 <script src="shared/race-core.js"></script>
 <script>
 'use strict';
@@ -308,32 +305,16 @@ let lastUpdate = 0;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
-  // Safari debugging
-  console.log('[Simple] User Agent:', navigator.userAgent);
-  console.log('[Simple] Protocol:', window.location.protocol);
-  console.log('[Simple] Starting MQTT connection to:', state.mqtt.host, state.mqtt.port);
-  
   RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
   
   RaceCore.on('connect', () => {
-    console.log('[Simple] MQTT connected successfully');
     document.getElementById('connectionStatus').textContent = 'Connected';
     document.getElementById('statusDot').className = 'status-dot connected';
   });
   
   RaceCore.on('disconnect', () => {
-    console.log('[Simple] MQTT disconnected');
     document.getElementById('connectionStatus').textContent = 'Disconnected';
     document.getElementById('statusDot').className = 'status-dot';
-  });
-  
-  // Safari-specific error handling
-  window.addEventListener('error', (e) => {
-    console.error('[Simple] JavaScript error:', e.error);
-  });
-  
-  window.addEventListener('unhandledrejection', (e) => {
-    console.error('[Simple] Unhandled promise rejection:', e.reason);
   });
   
   RaceCore.on('data', ({ live: l }) => {
