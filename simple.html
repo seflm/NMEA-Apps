@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Sailing Data</title>
+<link rel="stylesheet" href="shared/race-theme.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Simple Header */
+header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 56px;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-right: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background: rgba(0, 212, 255, 0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+header h1 {
+  font-size: 0.9rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* Main Content - 2x2 Grid */
+main {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  min-height: 0;
+}
+
+/* Big Digit Cards */
+.big-digit-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  transition: border-color 0.2s, transform 0.2s;
+  min-height: 0;
+}
+
+.big-digit-card:hover {
+  border-color: var(--accent);
+  transform: scale(1.02);
+}
+
+.card-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 8px;
+}
+
+.big-value {
+  font-size: 3.5rem;
+  font-weight: bold;
+  color: var(--accent);
+  line-height: 1;
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+}
+
+.big-unit {
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Special styling for percentage */
+.percentage-value {
+  font-size: 4rem;
+}
+
+.percentage-value.high {
+  color: var(--good);
+}
+
+.percentage-value.medium {
+  color: var(--warn);
+}
+
+.percentage-value.low {
+  color: var(--danger);
+}
+
+/* Mobile Responsive */
+@media (max-width: 600px) {
+  header {
+    padding: 8px 12px;
+    padding-top: max(8px, env(safe-area-inset-top));
+    padding-left: max(12px, env(safe-area-inset-left));
+    padding-right: max(12px, env(safe-area-inset-right));
+    height: 48px;
+  }
+  
+  header h1 {
+    font-size: 0.8rem;
+  }
+  
+  main {
+    grid-template-columns: 1fr;
+    grid-template-rows: repeat(4, 1fr);
+    gap: 8px;
+    padding: 8px;
+    padding-left: max(8px, env(safe-area-inset-left));
+    padding-right: max(8px, env(safe-area-inset-right));
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    height: calc(100vh - 48px);
+    overflow: hidden;
+  }
+  
+  .big-digit-card {
+    padding: 12px;
+  }
+  
+  .big-value {
+    font-size: 2.2rem;
+  }
+  
+  .percentage-value {
+    font-size: 2.5rem;
+  }
+  
+  .card-label {
+    font-size: 0.6rem;
+  }
+  
+  .big-unit {
+    font-size: 0.65rem;
+  }
+}
+
+/* Small Mobile */
+@media (max-width: 380px) {
+  main {
+    gap: 6px;
+    padding: 6px;
+    padding-left: max(6px, env(safe-area-inset-left));
+    padding-right: max(6px, env(safe-area-inset-right));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+  }
+  
+  .big-digit-card {
+    padding: 8px;
+  }
+  
+  .big-value {
+    font-size: 1.8rem;
+  }
+  
+  .percentage-value {
+    font-size: 2rem;
+  }
+  
+  .card-label {
+    font-size: 0.55rem;
+  }
+  
+  .big-unit {
+    font-size: 0.6rem;
+  }
+}
+
+/* Status indicator */
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  transition: background 0.3s;
+}
+
+.status-dot.connected {
+  background: var(--good);
+  box-shadow: 0 0 6px var(--good);
+}
+
+.status-dot.stale {
+  background: var(--warn);
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <button class="back-button" onclick="window.location.href='index.html'" title="Back to Index">←</button>
+    <h1>⛵ SAILING DATA</h1>
+  </div>
+  <div class="header-right">
+    <div class="connection-status">
+      <span class="status-dot" id="statusDot"></span>
+      <span id="connectionStatus">Disconnected</span>
+    </div>
+    <span id="dataAge">--</span>
+  </div>
+</header>
+
+<main>
+  <!-- SOG Card -->
+  <div class="big-digit-card">
+    <div class="card-label">Speed Over Ground</div>
+    <div class="big-value" id="sogValue">--</div>
+    <div class="big-unit">knots</div>
+  </div>
+
+  <!-- Water Speed Card -->
+  <div class="big-digit-card">
+    <div class="card-label">Water Speed</div>
+    <div class="big-value" id="waterSpeedValue">--</div>
+    <div class="big-unit">knots</div>
+  </div>
+
+  <!-- TWS Card -->
+  <div class="big-digit-card">
+    <div class="card-label">True Wind Speed</div>
+    <div class="big-value" id="twsValue">--</div>
+    <div class="big-unit">knots</div>
+  </div>
+
+  <!-- Ratio Card -->
+  <div class="big-digit-card">
+    <div class="card-label">Speed Ratio</div>
+    <div class="big-value percentage-value" id="ratioValue">--</div>
+    <div class="big-unit">water speed / wind speed</div>
+  </div>
+</main>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<script src="shared/race-core.js"></script>
+<script>
+'use strict';
+
+let live = RaceCore.getLive();
+let state = RaceCore.loadState();
+let lastUpdate = 0;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
+  
+  RaceCore.on('connect', () => {
+    document.getElementById('connectionStatus').textContent = 'Connected';
+    document.getElementById('statusDot').className = 'status-dot connected';
+  });
+  
+  RaceCore.on('disconnect', () => {
+    document.getElementById('connectionStatus').textContent = 'Disconnected';
+    document.getElementById('statusDot').className = 'status-dot';
+  });
+  
+  RaceCore.on('data', ({ live: l }) => {
+    live = l;
+    lastUpdate = Date.now();
+    updateDisplay();
+  });
+  
+  updateDisplay();
+  setInterval(updateDataAge, 1000);
+});
+
+function updateDataAge() {
+  const ageEl = document.getElementById('dataAge');
+  if (lastUpdate) {
+    const s = Math.round((Date.now() - lastUpdate) / 1000);
+    ageEl.textContent = s + 's ago';
+    
+    // Update status dot based on data age
+    const statusDot = document.getElementById('statusDot');
+    if (s > 10) {
+      statusDot.className = 'status-dot stale';
+    } else if (statusDot.classList.contains('connected')) {
+      statusDot.className = 'status-dot connected';
+    }
+  } else {
+    ageEl.textContent = '--';
+  }
+}
+
+function updateDisplay() {
+  // SOG (Speed Over Ground)
+  const sog = live.sog || 0;
+  document.getElementById('sogValue').textContent = sog >= 0 ? sog.toFixed(1) : '--';
+  
+  // Water Speed (using water_spd from water topic)
+  const waterSpeed = live.water_spd || 0;
+  document.getElementById('waterSpeedValue').textContent = waterSpeed >= 0 ? waterSpeed.toFixed(1) : '--';
+  
+  // TWS (True Wind Speed)
+  const tws = live.tws || 0;
+  document.getElementById('twsValue').textContent = tws >= 0 ? tws.toFixed(1) : '--';
+  
+  // Ratio calculation (water speed / TWS * 100)
+  const ratioEl = document.getElementById('ratioValue');
+  if (waterSpeed > 0 && tws > 0) {
+    const ratio = (waterSpeed / tws) * 100;
+    ratioEl.textContent = ratio.toFixed(0) + '%';
+    
+    // Color coding based on ratio
+    ratioEl.className = 'big-value percentage-value';
+    if (ratio >= 80) {
+      ratioEl.classList.add('high');
+    } else if (ratio >= 60) {
+      ratioEl.classList.add('medium');
+    } else {
+      ratioEl.classList.add('low');
+    }
+  } else {
+    ratioEl.textContent = '--%';
+    ratioEl.className = 'big-value percentage-value';
+  }
+}
+</script>
+
+</body>
+</html>

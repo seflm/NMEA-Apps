@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Marine Dashboard</title>
+<link rel="stylesheet" href="shared/race-theme.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Simple Header */
+header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 48px;
+}
+
+.back-button {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-right: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background: rgba(0, 212, 255, 0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+header h1 {
+  font-size: 0.9rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+/* Dashboard - Simple 2x3 Grid */
+.dashboard {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  grid-template-rows: 1fr 1fr;
+  gap: 16px;
+  padding: 16px;
+  flex: 1;
+  min-height: 0;
+}
+
+/* Card Base */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.card-title {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  margin-bottom: 12px;
+  flex-shrink: 0;
+}
+
+.card-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+}
+
+/* Circular Gauge - Clean Design */
+.circular-gauge {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  flex-shrink: 0;
+}
+
+.circular-gauge svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.gauge-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 10;
+}
+
+.gauge-fill {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.5s ease;
+}
+
+.gauge-value {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+}
+
+.gauge-value .number {
+  font-size: 2rem;
+  font-weight: bold;
+  color: var(--accent);
+  display: block;
+}
+
+.gauge-value .unit {
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+
+/* Compass - Simple */
+.compass-container {
+  position: relative;
+  width: 180px;
+  height: 180px;
+  flex-shrink: 0;
+}
+
+.compass-face {
+  width: 100%;
+  height: 100%;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  position: relative;
+  background: radial-gradient(circle, rgba(0, 212, 255, 0.05) 0%, transparent 70%);
+}
+
+.compass-needle {
+  position: absolute;
+  width: 3px;
+  height: 50%;
+  background: linear-gradient(to top, var(--danger) 50%, var(--accent) 50%);
+  left: 50%;
+  top: 0;
+  transform-origin: bottom center;
+  transform: translateX(-50%) rotate(0deg);
+  transition: transform 0.5s ease;
+  border-radius: 2px;
+}
+
+.compass-center-dot {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--accent);
+  border-radius: 50%;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 8px var(--accent);
+}
+
+.compass-label {
+  position: absolute;
+  font-size: 0.7rem;
+  font-weight: bold;
+  color: var(--text);
+}
+
+.compass-label.n { top: 4px; left: 50%; transform: translateX(-50%); color: var(--accent); }
+.compass-label.s { bottom: 4px; left: 50%; transform: translateX(-50%); }
+.compass-label.e { right: 4px; top: 50%; transform: translateY(-50%); }
+.compass-label.w { left: 4px; top: 50%; transform: translateY(-50%); }
+
+.compass-reading {
+  text-align: center;
+  margin-top: 8px;
+}
+
+.compass-reading .value {
+  font-size: 1.6rem;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.compass-reading .label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Wind Panel */
+.wind-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  width: 100%;
+}
+
+.wind-item {
+  text-align: center;
+  padding: 8px;
+  background: rgba(0, 212, 255, 0.05);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+
+.wind-item .label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.wind-item .value {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.wind-item .unit {
+  font-size: 0.6rem;
+  color: var(--muted);
+}
+
+/* Wind Compass */
+.wind-compass {
+  grid-column: span 2;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  margin-top: 8px;
+}
+
+.wind-compass-rose {
+  position: relative;
+  width: 80px;
+  height: 80px;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+}
+
+.wind-compass-rose .arrow {
+  position: absolute;
+  width: 2px;
+  height: 40%;
+  background: var(--accent);
+  left: 50%;
+  top: 10%;
+  transform-origin: bottom center;
+  transform: translateX(-50%) rotate(0deg);
+  transition: transform 0.5s ease;
+}
+
+.wind-compass-rose .arrow::before {
+  content: '';
+  position: absolute;
+  top: -6px;
+  left: -3px;
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-bottom: 8px solid var(--accent);
+}
+
+.wind-direction-text {
+  text-align: center;
+}
+
+.wind-direction-text .value {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: var(--accent);
+}
+
+.wind-direction-text .label {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* Data List */
+.data-list {
+  width: 100%;
+}
+
+.data-list-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.8rem;
+}
+
+.data-list-item:last-child {
+  border-bottom: none;
+}
+
+.data-list-item .label {
+  color: var(--muted);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+}
+
+.data-list-item .value {
+  color: var(--accent);
+  font-weight: bold;
+}
+
+
+/* Status Badges */
+.status-badges {
+  display: flex;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.badge {
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.6rem;
+  font-weight: bold;
+  text-transform: uppercase;
+  border: 1px solid;
+}
+
+.badge.good {
+  background: rgba(48, 209, 88, 0.1);
+  color: var(--good);
+  border-color: var(--good);
+}
+
+.badge.warn {
+  background: rgba(255, 149, 0, 0.1);
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.badge.danger {
+  background: rgba(255, 59, 48, 0.1);
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+/* Responsive */
+@media (max-width: 900px) {
+  .dashboard {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: auto;
+    overflow-y: auto;
+  }
+}
+
+@media (max-width: 600px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+    height: auto;
+    overflow-y: auto;
+  }
+  
+  .circular-gauge, .compass-container {
+    width: 140px;
+    height: 140px;
+  }
+  
+  .gauge-value .number {
+    font-size: 1.4rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <button class="back-button" onclick="window.location.href='index.html'" title="Back to Index">←</button>
+    <h1>⚓ MARINE DASHBOARD</h1>
+  </div>
+  <div class="header-right">
+    <span id="connectionStatus">● Disconnected</span>
+    <span id="dataAge">--</span>
+  </div>
+</header>
+
+<div class="dashboard">
+
+  <!-- Boat Speed -->
+  <div class="card">
+    <div class="card-title">Boat Speed</div>
+    <div class="card-content">
+      <div class="circular-gauge">
+        <svg viewBox="0 0 180 180">
+          <circle class="gauge-bg" cx="90" cy="90" r="75"/>
+          <circle class="gauge-fill" id="sogGauge" cx="90" cy="90" r="75" 
+                  stroke="var(--accent)" stroke-dasharray="0 471"/>
+        </svg>
+        <div class="gauge-value">
+          <span class="number" id="sogValue">--</span>
+          <span class="unit">kt</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wind Speed -->
+  <div class="card">
+    <div class="card-title">Wind Speed</div>
+    <div class="card-content">
+      <div class="circular-gauge">
+        <svg viewBox="0 0 180 180">
+          <circle class="gauge-bg" cx="90" cy="90" r="75"/>
+          <circle class="gauge-fill" id="twsGauge" cx="90" cy="90" r="75" 
+                  stroke="var(--good)" stroke-dasharray="0 471"/>
+        </svg>
+        <div class="gauge-value">
+          <span class="number" id="twsValue">--</span>
+          <span class="unit">kt</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Heading -->
+  <div class="card">
+    <div class="card-title">Heading</div>
+    <div class="card-content">
+      <div class="compass-container">
+        <div class="compass-face">
+          <div class="compass-needle" id="headingNeedle"></div>
+          <div class="compass-center-dot"></div>
+          <div class="compass-label n">N</div>
+          <div class="compass-label s">S</div>
+          <div class="compass-label e">E</div>
+          <div class="compass-label w">W</div>
+        </div>
+      </div>
+      <div class="compass-reading">
+        <span class="value" id="headingValue">---</span>
+        <span class="label">° MAG</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Wind Data -->
+  <div class="card">
+    <div class="card-title">Wind Analysis</div>
+    <div class="card-content">
+      <div class="wind-grid">
+        <div class="wind-item">
+          <div class="label">TWS</div>
+          <div class="value"><span id="twsValue2">--</span> <span class="unit">kt</span></div>
+        </div>
+        <div class="wind-item">
+          <div class="label">AWS</div>
+          <div class="value"><span id="awsValue">--</span> <span class="unit">kt</span></div>
+        </div>
+        <div class="wind-item">
+          <div class="label">TWA</div>
+          <div class="value"><span id="twaValue">--</span> <span class="unit">°</span></div>
+        </div>
+        <div class="wind-item">
+          <div class="label">AWA</div>
+          <div class="value"><span id="awaValue">--</span> <span class="unit">°</span></div>
+        </div>
+        <div class="wind-compass">
+          <div class="wind-compass-rose">
+            <div class="arrow" id="windArrow"></div>
+          </div>
+          <div class="wind-direction-text">
+            <div class="value" id="twdValue">---</div>
+            <div class="label">TWD</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Navigation -->
+  <div class="card">
+    <div class="card-title">Navigation</div>
+    <div class="card-content">
+      <div class="data-list">
+        <div class="data-list-item">
+          <span class="label">COG</span>
+          <span class="value" id="cogValue">--°</span>
+        </div>
+        <div class="data-list-item">
+          <span class="label">SOG</span>
+          <span class="value" id="sogValue2">-- kt</span>
+        </div>
+        <div class="data-list-item">
+          <span class="label">VMG</span>
+          <span class="value" id="vmgValue">-- kt</span>
+        </div>
+        <div class="data-list-item">
+          <span class="label">Turn Rate</span>
+          <span class="value" id="rotValue">-- °/min</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Environment -->
+  <div class="card">
+    <div class="card-title">Environment</div>
+    <div class="card-content">
+      <div class="data-list">
+        <div class="data-list-item">
+          <span class="label">Depth</span>
+          <span class="value" id="depthValue">-- m</span>
+        </div>
+        <div class="data-list-item">
+          <span class="label">Water Temp</span>
+          <span class="value" id="waterTempValue">-- °C</span>
+        </div>
+        <div class="data-list-item">
+          <span class="label">GPS Fix</span>
+          <span class="value" id="gpsFixValue">--</span>
+        </div>
+        <div class="data-list-item">
+          <span class="label">Satellites</span>
+          <span class="value" id="satsValue">--</span>
+        </div>
+      </div>
+      <div class="status-badges">
+        <span class="badge good" id="windBadge">Light</span>
+        <span class="badge" id="depthBadge">Normal</span>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- Scripts -->
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<script src="shared/race-core.js"></script>
+<script>
+'use strict';
+
+let live = RaceCore.getLive();
+let state = RaceCore.loadState();
+let lastUpdate = 0;
+
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+  RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
+  
+  RaceCore.on('connect', () => {
+    document.getElementById('connectionStatus').innerHTML = '<span style="color:var(--good)">● Connected</span>';
+  });
+  
+  RaceCore.on('disconnect', () => {
+    document.getElementById('connectionStatus').innerHTML = '<span style="color:var(--danger)">● Disconnected</span>';
+  });
+  
+  RaceCore.on('data', ({ live: l }) => {
+    live = l;
+    lastUpdate = Date.now();
+    updateDashboard();
+  });
+  
+  updateDashboard();
+  setInterval(updateDataAge, 1000);
+});
+
+function updateDataAge() {
+  const ageEl = document.getElementById('dataAge');
+  if (lastUpdate) {
+    const s = Math.round((Date.now() - lastUpdate) / 1000);
+    ageEl.textContent = s + 's ago';
+    ageEl.style.color = s > 5 ? 'var(--warn)' : 'var(--muted)';
+  } else {
+    ageEl.textContent = '--';
+  }
+}
+
+function updateDashboard() {
+  const circumference = 2 * Math.PI * 75; // r=75
+  
+  // Boat Speed Gauge (0-20 kt)
+  const sog = live.sog || 0;
+  const sogPct = Math.min(sog / 20, 1);
+  document.getElementById('sogGauge').style.strokeDasharray = (sogPct * circumference) + ' ' + circumference;
+  document.getElementById('sogValue').textContent = sog.toFixed(1);
+  document.getElementById('sogValue2').textContent = sog.toFixed(1) + ' kt';
+  
+  // Wind Speed Gauge (0-40 kt)
+  const tws = live.tws || 0;
+  const twsPct = Math.min(tws / 40, 1);
+  document.getElementById('twsGauge').style.strokeDasharray = (twsPct * circumference) + ' ' + circumference;
+  document.getElementById('twsValue').textContent = tws.toFixed(1);
+  document.getElementById('twsValue2').textContent = tws.toFixed(1);
+  
+  // Heading Compass
+  const hdg = live.hdg || 0;
+  document.getElementById('headingNeedle').style.transform = `translateX(-50%) rotate(${hdg}deg)`;
+  document.getElementById('headingValue').textContent = Math.round(hdg);
+  
+  // Wind Data
+  const aws = live.aws || 0;
+  const twa = live.twa || 0;
+  const awa = live.awa || 0;
+  const twd = live.twd || 0;
+  
+  document.getElementById('awsValue').textContent = aws.toFixed(1);
+  document.getElementById('twaValue').textContent = Math.round(twa);
+  document.getElementById('awaValue').textContent = Math.round(awa);
+  document.getElementById('twdValue').textContent = Math.round(twd);
+  document.getElementById('windArrow').style.transform = `translateX(-50%) rotate(${twd}deg)`;
+  
+  // Wind badge
+  const windBadge = document.getElementById('windBadge');
+  if (tws < 10) {
+    windBadge.className = 'badge good';
+    windBadge.textContent = 'Light';
+  } else if (tws < 20) {
+    windBadge.className = 'badge warn';
+    windBadge.textContent = 'Moderate';
+  } else {
+    windBadge.className = 'badge danger';
+    windBadge.textContent = 'Strong';
+  }
+  
+  // Navigation Data
+  const cog = live.cog || 0;
+  const vmg = sog * Math.cos(Math.abs(twa) * Math.PI / 180);
+  const rot = live.rot || 0;
+  
+  document.getElementById('cogValue').textContent = Math.round(cog) + '°';
+  document.getElementById('vmgValue').textContent = vmg.toFixed(1) + ' kt';
+  document.getElementById('rotValue').textContent = rot.toFixed(1) + ' °/min';
+  
+  // Environment Data
+  const depth = live.water_depth || 0;
+  const temp = live.water_temp || 0;
+  const fix = live.fix || 0;
+  const sats = live.sats || 0;
+  
+  document.getElementById('depthValue').textContent = depth > 0 ? depth.toFixed(1) + ' m' : '--';
+  document.getElementById('waterTempValue').textContent = temp > 0 ? temp.toFixed(1) + ' °C' : '--';
+  document.getElementById('gpsFixValue').textContent = fix === 0 ? 'None' : fix === 1 ? 'GPS' : fix === 2 ? 'DGPS' : 'RTK';
+  document.getElementById('satsValue').textContent = sats;
+  
+  
+  // Depth badge
+  const depthBadge = document.getElementById('depthBadge');
+  if (depth < 3) {
+    depthBadge.className = 'badge danger';
+    depthBadge.textContent = 'Shallow';
+  } else if (depth < 10) {
+    depthBadge.className = 'badge warn';
+    depthBadge.textContent = 'Caution';
+  } else {
+    depthBadge.className = 'badge good';
+    depthBadge.textContent = 'Normal';
+  }
+}
+</script>
+
+</body>
+</html>

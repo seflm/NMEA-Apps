@@ -1,0 +1,1433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Race Assistant</title>
+<link rel="stylesheet" href="shared/race-theme.css">
+<style>
+/* ── SPA layout ──────────────────────────────────────────────── */
+.view { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.view[hidden] { display: none; }
+
+.page {
+  display: flex; flex: 1; min-height: 0; gap: 8px; padding: 8px;
+}
+
+/* ── Left panel (shared by Plan and Race) ────────────────────── */
+.left-panel {
+  width: 296px; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 8px;
+  overflow-y: auto;
+}
+
+/* ── Plotter wrap ────────────────────────────────────────────── */
+.plotter-wrap {
+  flex: 1; min-width: 0; min-height: 0;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+}
+.plotter-wrap canvas { display: block; width: 100%; height: 100%; }
+.plotter-hud {
+  position: absolute; padding: 5px 9px; border-radius: 6px;
+  background: rgba(7,15,28,0.82); border: 1px solid var(--border);
+  font-size: 0.68rem; color: var(--muted); pointer-events: none;
+}
+.plotter-hud.topleft    { top: 8px; left: 8px; }
+.plotter-hud.bottomleft { bottom: 8px; left: 8px; }
+
+/* ── Sub-tabs bar (Plan: Field / Route) ──────────────────────── */
+.sub-tabs-bar {
+  display: flex; gap: 4px;
+  padding: 4px 8px 0;
+  flex-shrink: 0;
+}
+.sub-tab {
+  background: transparent;
+  border: 1px solid var(--border); border-bottom: none;
+  color: var(--muted); padding: 5px 16px;
+  font-family: var(--font); font-size: 0.72rem; cursor: pointer;
+  border-radius: 6px 6px 0 0; letter-spacing: 0.08em;
+}
+.sub-tab.active { background: #0a1f30; border-color: var(--accent); color: var(--accent); }
+
+/* ── Mark list ───────────────────────────────────────────────── */
+.mark-list { display: flex; flex-direction: column; gap: 4px; }
+.mark-item {
+  background: #091520; border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 10px; cursor: pointer; position: relative;
+}
+.mark-item:hover { border-color: var(--accent2); }
+.mark-item.active { border-color: var(--accent); background: #0a1f30; }
+.mark-name  { font-size: 0.82rem; color: var(--text); }
+.mark-kind  { font-size: 0.62rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.mark-pos   { font-size: 0.68rem; color: var(--accent); margin-top: 2px; }
+.mark-del {
+  position: absolute; top: 6px; right: 8px;
+  background: transparent; border: none; color: var(--danger);
+  font-size: 0.8rem; cursor: pointer; padding: 2px 4px;
+}
+
+/* ── Inline add list (expands in-flow, no absolute) ─────────── */
+.inline-add-list {
+  background: #0c1a2e; border: 1px solid var(--border); border-radius: 8px;
+  margin-top: 2px; display: flex; flex-direction: column;
+}
+.inline-add-list button {
+  display: block; width: 100%; text-align: left;
+  background: transparent; border: none; border-bottom: 1px solid var(--border);
+  color: var(--text); padding: 8px 12px; font-family: var(--font);
+  font-size: 0.78rem; cursor: pointer;
+}
+.inline-add-list button:last-child { border-bottom: none; }
+.inline-add-list button:hover { background: #0a1f30; color: var(--accent); }
+
+/* ── Mark detail panel (below mark list) ────────────────────── */
+#markDetail { display: none; }
+#markDetail.visible { display: flex; flex-direction: column; gap: 8px; }
+.bearing-list { display: flex; flex-direction: column; gap: 2px; }
+
+/* ── Leg list ────────────────────────────────────────────────── */
+.leg-list { display: flex; flex-direction: column; gap: 4px; }
+.leg-item {
+  background: #091520; border: 1px solid var(--border); border-radius: 6px;
+  padding: 7px 10px; display: flex; align-items: center; gap: 6px;
+}
+.leg-num { font-size: 0.62rem; color: var(--muted); min-width: 20px; }
+.leg-name { flex: 1; font-size: 0.82rem; color: var(--text); }
+.leg-del {
+  background: transparent; border: none; color: var(--danger);
+  font-size: 0.8rem; cursor: pointer; padding: 2px 4px;
+}
+.leg-up, .leg-dn {
+  background: transparent; border: none; color: var(--muted);
+  font-size: 0.8rem; cursor: pointer; padding: 2px 4px;
+}
+.leg-up:hover, .leg-dn:hover { color: var(--accent); }
+
+/* ── Race view extras ────────────────────────────────────────── */
+body.data-stale .live-strip .val,
+body.data-stale .eta-value,
+body.data-stale .kv .v { opacity: 0.5; }
+
+.action-row { display: flex; gap: 6px; }
+.action-row .btn { flex: 1; }
+
+.leg-badge {
+  display: inline-block; padding: 3px 10px; border-radius: 10px;
+  font-size: 0.7rem; letter-spacing: 0.1em; font-weight: bold;
+  background: #003344; color: var(--accent); border: 1px solid var(--accent2);
+}
+.progress-bar { height: 5px; border-radius: 3px; background: #1a3a5c; margin-top: 4px; }
+.progress-fill { height: 100%; border-radius: 3px; background: var(--accent); transition: width 0.4s; }
+
+/* ── Tune view ───────────────────────────────────────────────── */
+.page-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 10px; align-content: start;
+  overflow-y: auto;
+}
+.dev-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+.dev-table th {
+  text-align: left; padding: 4px 6px; color: var(--muted);
+  font-weight: normal; font-size: 0.62rem;
+  text-transform: uppercase; letter-spacing: 0.08em;
+  border-bottom: 1px solid var(--border);
+}
+.dev-table td { padding: 4px 6px; border-bottom: 1px solid #0d2240; }
+.dev-table tr.calibrated td:first-child { color: var(--good); }
+.dev-table tr.uncalibrated td:first-child { color: var(--muted); }
+.dev-offset-pos { color: #ff9500; }
+.dev-offset-neg { color: #30d158; }
+.cal-progress { height: 8px; border-radius: 4px; background: #1a3a5c; overflow: hidden; margin: 4px 0 2px; }
+.cal-fill { height: 100%; border-radius: 4px; background: var(--good); transition: width 0.5s; }
+#diagLog {
+  background: #030a14; border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px; font-size: 0.65rem; color: var(--muted);
+  height: 120px; overflow-y: auto; white-space: pre-wrap; word-break: break-all;
+}
+
+/* ── Back Button ───────────────────────────────────────────── */
+.back-button {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  margin-right: 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s;
+}
+
+.back-button:hover {
+  background: rgba(0, 212, 255, 0.1);
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  #plan-page, #race-page { flex-direction: column; }
+  .left-panel { width: 100%; max-height: 45vh; }
+  #racePlotterWrap { height: 52vh; }
+  #plan-page { flex-direction: column-reverse; }
+  #race-page { flex-direction: column-reverse; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ HEADER ═══════════ -->
+<header>
+  <div class="header-left">
+    <button class="back-button" onclick="window.location.href='index.html'" title="Back to Index">←</button>
+    <h1>&#9973; RACE ASSISTANT</h1>
+  </div>
+  <nav class="nav" id="tabNav">
+    <a data-tab="plan" href="/plan" onclick="tabClick(event,'plan')">PLAN</a>
+    <a data-tab="race" href="/race" onclick="tabClick(event,'race')">RACE</a>
+    <a data-tab="tune" href="/tune" onclick="tabClick(event,'tune')">TUNE</a>
+  </nav>
+  <div class="header-right">
+    <span><span class="status-dot" id="mqttDot"></span><span id="mqttStatus">Connecting…</span></span>
+    <span id="dataAge"></span>
+  </div>
+</header>
+
+<!-- ═══════════ PLAN VIEW ═══════════ -->
+<div id="view-plan" class="view">
+  <div class="sub-tabs-bar">
+    <button class="sub-tab active" id="stField" onclick="showSub('field')">FIELD</button>
+    <button class="sub-tab"        id="stRoute" onclick="showSub('route')">ROUTE</button>
+  </div>
+  <div id="plan-page" class="page">
+
+    <!-- Left panel -->
+    <div class="left-panel">
+
+      <!-- FIELD sub-panel -->
+      <div id="sub-field">
+
+        <!-- Start line info -->
+        <div class="card" id="lineInfo">
+          <div class="card-title">Start Line</div>
+          <div class="kv"><span class="k">Length</span><span class="v hi" id="lineLen">—</span></div>
+          <div class="kv"><span class="k">Bearing</span><span class="v" id="lineBrg">—</span></div>
+          <div class="kv"><span class="k">Favored end</span><span class="v" id="lineFav">—</span></div>
+        </div>
+
+        <!-- Mark list -->
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Field Marks</span>
+            <button class="btn small primary" onclick="toggleAddMark()">+ ADD</button>
+          </div>
+          <div class="inline-add-list" id="addMarkList" hidden>
+            <button onclick="uiAddMark('Start Pin','start-pin','any')">Start Pin</button>
+            <button onclick="uiAddMark('Start RC','start-rc','any')">Start RC</button>
+            <button onclick="uiAddMark('Mark','mark','port')">Mark</button>
+            <button onclick="uiAddMark('Finish Pin','finish-pin','any')">Finish Pin</button>
+            <button onclick="uiAddMark('Finish RC','finish-rc','any')">Finish RC</button>
+          </div>
+          <div class="mark-list" id="markList">
+            <div style="color:var(--muted);font-size:0.75rem;text-align:center;padding:12px 0">
+              No marks yet — tap + ADD
+            </div>
+          </div>
+        </div>
+
+        <!-- Mark detail (expands in-flow below list) -->
+        <div class="card" id="markDetail">
+          <div class="card-title">Edit Mark</div>
+          <label>Name</label>
+          <input class="input" id="detName" placeholder="Mark name" oninput="updateMarkDetail('name',this.value)">
+          <label>Kind</label>
+          <select class="input" id="detKind" onchange="updateMarkDetail('kind',this.value)">
+            <option value="start-pin">Start Pin</option>
+            <option value="start-rc">Start RC (Race Committee)</option>
+            <option value="mark">Mark</option>
+            <option value="finish-pin">Finish Pin</option>
+            <option value="finish-rc">Finish RC</option>
+          </select>
+          <label>Rounding side</label>
+          <select class="input" id="detRounding" onchange="updateMarkDetail('rounding',this.value)">
+            <option value="port">Leave to port</option>
+            <option value="stbd">Leave to starboard</option>
+            <option value="any">Any / line</option>
+          </select>
+          <label>Distance hint (nm)</label>
+          <input class="input" type="number" id="detDist" step="0.05" placeholder="e.g. 0.5"
+                 oninput="updateMarkDetail('distance_hint_nm',parseFloat(this.value)||null)">
+          <div class="kv" style="margin-top:4px">
+            <span class="k">Position</span>
+            <span class="v hi" id="detPos">not set</span>
+          </div>
+          <div style="display:flex;gap:6px">
+            <button class="btn small primary" style="flex:1" onclick="pingMark()">PING GPS</button>
+            <button class="btn small" style="flex:1" onclick="tapMapMark()">TAP MAP</button>
+            <button class="btn small" style="flex:1" onclick="clearMarkPos()">CLEAR</button>
+          </div>
+          <div class="card-title" style="margin-top:4px">Bearings (triangulation)</div>
+          <div class="bearing-list" id="bearingList"></div>
+          <button class="btn small" onclick="addManualBearing()">+ MANUAL BEARING</button>
+        </div>
+
+        <!-- Clear all -->
+        <button class="btn danger" style="width:100%" onclick="clearAll()">CLEAR ALL</button>
+
+      </div><!-- /sub-field -->
+
+      <!-- ROUTE sub-panel -->
+      <div id="sub-route" hidden>
+
+        <!-- Course config -->
+        <div class="card">
+          <div class="card-title">Course</div>
+          <label>Type</label>
+          <select class="input" id="courseType" onchange="onCourseTypeChange()">
+            <option value="carousel">Carousel (laps around marks)</option>
+            <option value="navigation">Navigation (one-way)</option>
+          </select>
+          <div id="lapsRow" style="display:flex;gap:6px;align-items:center;margin-top:4px">
+            <label style="white-space:nowrap">Laps</label>
+            <input class="input" type="number" id="lapsInput" value="1" min="1" max="20"
+                   style="width:64px" onchange="onLapsChange()">
+          </div>
+        </div>
+
+        <!-- Legs -->
+        <div class="card">
+          <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+            <span>Course Legs</span>
+            <button class="btn small primary" onclick="openAddLeg()">+ ADD LEG</button>
+          </div>
+          <div style="margin-top:4px">
+            <select class="input" id="legMarkSel" style="display:none">
+              <option value="">— pick a mark —</option>
+            </select>
+            <button class="btn small" id="legMarkConfirm" onclick="confirmAddLeg()" style="display:none;margin-top:4px;width:100%">ADD THIS LEG</button>
+          </div>
+          <div class="leg-list" id="legList">
+            <div style="color:var(--muted);font-size:0.75rem;text-align:center;padding:12px 0">
+              No legs yet — add legs from field marks
+            </div>
+          </div>
+        </div>
+
+        <button class="btn primary big" style="width:100%" onclick="showTab('race')">→ RACE</button>
+
+      </div><!-- /sub-route -->
+    </div><!-- /left-panel -->
+
+    <!-- Plan chart -->
+    <div class="plotter-wrap" id="planPlotterWrap">
+      <canvas id="planCanvas"></canvas>
+      <div class="plotter-hud topleft">Scale: <span id="planHudScale">—</span> &nbsp;|&nbsp; wheel/pinch zoom</div>
+      <div class="plotter-hud bottomleft" id="planMsg">Tap chart to place selected mark</div>
+    </div>
+
+  </div><!-- /plan-page -->
+</div><!-- /view-plan -->
+
+
+<!-- ═══════════ RACE VIEW ═══════════ -->
+<div id="view-race" class="view" hidden>
+  <div id="race-page" class="page">
+
+    <!-- Left panel -->
+    <div class="left-panel">
+
+      <div class="status-big" id="statusBig">
+        <div class="txt" id="statusTxt">WAITING FOR DATA…</div>
+      </div>
+
+      <div class="live-strip">
+        <div class="live-cell"><div class="lbl">TWS</div><div><span class="val" id="liveTws">—</span><span class="unit">kt</span></div></div>
+        <div class="live-cell"><div class="lbl">TWD</div><div><span class="val" id="liveTwd">—</span><span class="unit">°</span></div></div>
+        <div class="live-cell"><div class="lbl">TWA</div><div><span class="val" id="liveTwa">—</span><span class="unit">°</span></div></div>
+        <div class="live-cell"><div class="lbl">SOG</div><div><span class="val" id="liveSog">—</span><span class="unit">kt</span></div></div>
+        <div class="live-cell"><div class="lbl">COG</div><div><span class="val" id="liveCog">—</span><span class="unit">°</span></div></div>
+        <div class="live-cell"><div class="lbl">HDG</div><div><span class="val" id="liveHdg">—</span><span class="unit">°</span></div></div>
+      </div>
+
+      <div class="eta-card card">
+        <div class="eta-label" id="etaLabel">ETA TO TACK</div>
+        <div class="eta-value" id="etaValue">—</div>
+      </div>
+
+      <div class="card">
+        <div class="kv"><span class="k">Dist to mark</span><span class="v hi" id="distMark">—</span></div>
+        <div class="kv"><span class="k">Bearing to mark</span><span class="v" id="brgMark">—</span></div>
+        <div class="kv"><span class="k">Port layline</span><span class="v port" id="portLL">—</span></div>
+        <div class="kv"><span class="k">Stbd layline</span><span class="v stbd" id="stbdLL">—</span></div>
+        <div class="kv"><span class="k">Favored tack</span><span class="v" id="favTack">—</span></div>
+        <div class="kv"><span class="k">VMG now / opt</span><span class="v" id="vmg">—</span></div>
+        <div style="margin-top:6px;display:flex;justify-content:space-between;align-items:center">
+          <span class="leg-badge" id="legBadge">PRE-START</span>
+          <span style="font-size:0.72rem;color:var(--muted)" id="lapLabel"></span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+      </div>
+
+      <div class="action-row">
+        <button class="btn primary" onclick="openBearingSheet()">BEARING</button>
+        <button class="btn warn"    onclick="markRounded()">ROUNDED</button>
+        <button class="btn"         onclick="togglePause()" id="pauseBtn">PAUSE</button>
+      </div>
+
+    </div><!-- /left-panel -->
+
+    <!-- Race chart -->
+    <div class="plotter-wrap" id="racePlotterWrap">
+      <canvas id="raceCanvas"></canvas>
+      <div class="plotter-hud topleft">Scale: <span id="raceHudScale">—</span></div>
+    </div>
+
+  </div><!-- /race-page -->
+</div><!-- /view-race -->
+
+
+<!-- ═══════════ TUNE VIEW ═══════════ -->
+<div id="view-tune" class="view" hidden>
+  <div class="page page-grid" style="padding:10px">
+
+    <!-- Boat config -->
+    <div class="card">
+      <div class="card-title">Boat</div>
+      <label>Boat name</label>
+      <input class="input" id="boatName" placeholder="e.g. First 36" oninput="saveBoat()">
+      <label>Polar file URL</label>
+      <input class="input" id="polarFile" placeholder="first36.json" oninput="saveBoat()">
+      <div class="kv"><span class="k">Polar status</span><span class="v hi" id="polarStatus">—</span></div>
+      <div class="kv"><span class="k">Live TWS</span><span class="v" id="polarLiveTws">—</span></div>
+      <div class="kv"><span class="k">Beat TWA / SOG</span><span class="v" id="polarBeat">—</span></div>
+      <div class="kv"><span class="k">Run TWA / SOG</span><span class="v" id="polarRun">—</span></div>
+    </div>
+
+    <!-- Deviation -->
+    <div class="card">
+      <div class="card-title">Compass Deviation</div>
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <span style="font-size:0.75rem" id="calSummary">0 / 8 buckets calibrated</span>
+        <span class="status-tag" id="calTag">IN PROGRESS</span>
+      </div>
+      <div class="cal-progress"><div class="cal-fill" id="calFill" style="width:0%"></div></div>
+      <table class="dev-table">
+        <thead>
+          <tr><th>Range</th><th>Offset</th><th>Samples</th><th>Status</th></tr>
+        </thead>
+        <tbody id="devTableBody"></tbody>
+      </table>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <button class="btn small primary" style="flex:1" onclick="exportDeviation()">EXPORT</button>
+        <label class="btn small" style="flex:1;text-align:center;cursor:pointer">
+          IMPORT<input type="file" accept=".json" style="display:none" onchange="importDeviation(event)">
+        </label>
+        <button class="btn small danger" style="flex:1" onclick="clearDeviation()">CLEAR</button>
+      </div>
+      <div class="kv" style="margin-top:4px">
+        <span class="k">Variation (PGN 127250)</span>
+        <span class="v hi" id="variationVal">—</span>
+      </div>
+      <div class="kv">
+        <span class="k">Corrected HDG</span>
+        <span class="v" id="corrHdg">—</span>
+      </div>
+    </div>
+
+    <!-- MQTT connection config + diagnostics -->
+    <div class="card">
+      <div class="card-title">MQTT Connection</div>
+      <label>Broker host</label>
+      <input class="input" id="mqttHost" placeholder="esp-nmea.local" oninput="saveMqttConfig()">
+      <label>Port</label>
+      <input class="input" type="number" id="mqttPort" placeholder="9001" oninput="saveMqttConfig()">
+      <div style="display:flex;gap:6px;margin-top:6px">
+        <button class="btn small primary" style="flex:1" onclick="reconnectMqtt()">RECONNECT</button>
+        <button class="btn small" style="flex:1" onclick="testMqttConnection()">TEST</button>
+      </div>
+      <button class="btn small" style="margin-top:4px;width:100%" onclick="diagnoseMqttNetwork()">NETWORK DIAGNOSTICS</button>
+      <div class="kv" style="margin-top:8px"><span class="k">Status</span><span class="v hi" id="diagMqtt">—</span></div>
+      <div class="kv"><span class="k">Free heap</span><span class="v" id="diagHeap">—</span></div>
+      <div class="kv"><span class="k">WiFi RSSI</span><span class="v" id="diagRssi">—</span></div>
+      <div class="kv"><span class="k">Clients</span><span class="v" id="diagClients">—</span></div>
+      <div class="kv"><span class="k">Uptime</span><span class="v" id="diagUptime">—</span></div>
+      <div style="margin-top:8px">
+        <div style="font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px">Event log</div>
+        <div id="diagLog"></div>
+      </div>
+    </div>
+
+    <!-- Live data -->
+    <div class="card">
+      <div class="card-title">Live Data</div>
+      <div class="kv"><span class="k">Lat / Lon</span><span class="v" id="livePosVal">—</span></div>
+      <div class="kv"><span class="k">SOG</span><span class="v" id="liveSogVal">—</span></div>
+      <div class="kv"><span class="k">COG</span><span class="v" id="liveCogVal">—</span></div>
+      <div class="kv"><span class="k">HDG</span><span class="v" id="liveHdgVal">—</span></div>
+      <div class="kv"><span class="k">ROT</span><span class="v" id="liveRotVal">—</span></div>
+      <div class="kv"><span class="k">TWS / TWD</span><span class="v" id="liveTwVal">—</span></div>
+      <div class="kv"><span class="k">AWS / AWA</span><span class="v" id="liveAwVal">—</span></div>
+      <div class="kv"><span class="k">Depth</span><span class="v" id="liveDepthVal">—</span></div>
+      <div class="kv"><span class="k">Water temp</span><span class="v" id="liveWaterTmpVal">—</span></div>
+      <div class="kv"><span class="k">GPS fix / sats</span><span class="v" id="liveFixVal">—</span></div>
+    </div>
+
+    <!-- Wind samples -->
+    <div class="card">
+      <div class="card-title">Wind Samples</div>
+      <div class="kv"><span class="k">Collected</span><span class="v hi" id="windSamples">—</span></div>
+      <div style="font-size:0.7rem;color:var(--muted);margin-top:4px">
+        Auto-collected when SOG &gt; 2 kt and GPS fix available.
+      </div>
+      <button class="btn small danger" onclick="clearWindSamples()" style="margin-top:6px">CLEAR SAMPLES</button>
+    </div>
+
+  </div>
+</div><!-- /view-tune -->
+
+
+<!-- ═══════════ BEARING SHEET (overlay) ═══════════ -->
+<div class="sheet-backdrop" id="bearingSheet" onclick="closeBearingSheet(event)">
+  <div class="sheet" onclick="event.stopPropagation()">
+    <h2>CAPTURE BEARING TO MARK</h2>
+    <div class="sheet-tabs">
+      <button class="sheet-tab active" id="tabN2k"    onclick="setTab('n2k')">N2K HDG</button>
+      <button class="sheet-tab"        id="tabManual" onclick="setTab('manual')">MANUAL</button>
+      <button class="sheet-tab"        id="tabPhone"  onclick="setTab('phone')">PHONE MAG</button>
+    </div>
+    <div id="paneN2k">
+      <div class="kv"><span class="k">Current HDG</span><span class="v hi" id="sheetHdg">—</span></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin:4px 0">
+        Point the bow directly at the mark, then tap CAPTURE.
+      </div>
+      <button class="btn primary" onclick="captureN2k()">CAPTURE N2K BEARING</button>
+    </div>
+    <div id="paneManual" style="display:none">
+      <label>Hand-bearing compass reading (°)</label>
+      <input class="input" type="number" id="manualBrg" min="0" max="360" placeholder="e.g. 045">
+      <button class="btn primary" style="margin-top:6px" onclick="captureManual()">CAPTURE MANUAL BEARING</button>
+    </div>
+    <div id="panePhone" style="display:none">
+      <div class="kv"><span class="k">Phone compass</span><span class="v hi" id="phoneBrg">—</span></div>
+      <div style="font-size:0.72rem;color:var(--muted);margin:4px 0">Hold phone flat, point at mark.</div>
+      <button class="btn small" onclick="requestPhone()" id="phoneReqBtn">ENABLE COMPASS</button>
+      <button class="btn primary" style="margin-top:6px" onclick="capturePhone()">CAPTURE PHONE BEARING</button>
+    </div>
+    <label style="margin-top:8px">Target mark</label>
+    <select class="input" id="bearingTarget" onchange="refreshSheetBearingList()"></select>
+    <div class="bearing-list" id="sheetBearingList"></div>
+    <button class="btn small danger" style="margin-top:4px" onclick="closeBearingSheet()">CLOSE</button>
+  </div>
+</div>
+
+
+<!-- ═══════════ SCRIPTS ═══════════ -->
+<script src="shared/mqtt.min.js"></script>
+<script src="shared/race-core.js"></script>
+<script src="shared/race-plotter.js"></script>
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════════
+// GLOBALS
+// ═══════════════════════════════════════════════════════════════
+const state    = RaceCore.loadState();
+let   live     = RaceCore.getLive();
+let   currentTab = 'plan';
+let   paused   = false;
+let   trackHistory = [];
+let   logLines = [];
+let   selectedMarkId = null;
+
+let planPlotter = null;
+let racePlotter = null;
+
+// ═══════════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Create plotters
+  planPlotter = new RacePlotter(el('planCanvas'), { scaleElId: 'planHudScale' });
+  racePlotter = new RacePlotter(el('raceCanvas'), { scaleElId: 'raceHudScale' });
+
+  // Connect MQTT (single connection for all tabs)
+  RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
+
+  // Restore Tune fields
+  el('boatName').value  = state.boat.name || '';
+  el('polarFile').value = state.boat.polar_url || 'first36.json';
+  el('mqttHost').value  = state.mqtt.host || 'esp-nmea.local';
+  el('mqttPort').value  = state.mqtt.port || 9001;
+  el('courseType').value = state.course.type || 'carousel';
+  el('lapsInput').value  = state.course.laps || 1;
+  el('lapsRow').style.display = state.course.type === 'navigation' ? 'none' : 'flex';
+
+  // Load polar
+  RaceCore.loadPolar(state.boat.polar_url || 'first36.json').then(p => {
+    el('polarStatus').textContent = p ? (p.boat || 'OK') : 'LOAD FAILED';
+  });
+
+  // MQTT events
+  RaceCore.on('connect', () => {
+    addLog('[MQTT] Connected');
+    updateMqttBadge(true);
+  });
+  RaceCore.on('disconnect', () => {
+    addLog('[MQTT] Disconnected — reconnecting…');
+    updateMqttBadge(false);
+  });
+  RaceCore.on('data', ({ live: l }) => {
+    live = l;
+    if (currentTab === 'race' && !paused) raceTick();
+    if (currentTab === 'plan') planRedraw();
+    if (currentTab === 'tune') tuneUpdate();
+    updateDataAge();
+  });
+
+  // Determine initial tab from URL path
+  const path = location.pathname.replace(/^\//, '').split('/')[0] || 'plan';
+  const validTabs = { plan: 1, race: 1, tune: 1 };
+  showTab(validTabs[path] ? path : 'plan', /* push */ false);
+
+  // Initial renders
+  renderMarkList();
+  renderLegList();
+  tuneUpdate();
+  planRedraw();
+
+  // Age timer (mark data stale after 5 s)
+  setInterval(() => {
+    const l = RaceCore.getLive();
+    const stale = !l.lastTs || Date.now() - l.lastTs > 5000;
+    document.body.classList.toggle('data-stale', stale);
+    updateDataAge();
+  }, 1000);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// TAB ROUTING
+// ═══════════════════════════════════════════════════════════════
+function tabClick(e, name) {
+  e.preventDefault();
+  showTab(name);
+}
+
+function showTab(name, push = true) {
+  currentTab = name;
+  document.querySelectorAll('.view').forEach(v => { v.hidden = true; });
+  el('view-' + name).hidden = false;
+  document.querySelectorAll('#tabNav [data-tab]').forEach(a => {
+    a.classList.toggle('active', a.dataset.tab === name);
+  });
+  if (push) history.pushState({ tab: name }, '', '/' + name);
+  if (name === 'plan') { planRedraw(); renderMarkList(); renderLegList(); updateLineInfo(); }
+  if (name === 'race') { raceTick(); }
+  if (name === 'tune') { tuneUpdate(); }
+}
+
+window.addEventListener('popstate', e => showTab(e.state?.tab || 'plan', false));
+
+// ═══════════════════════════════════════════════════════════════
+// PLAN — SUB-TABS
+// ═══════════════════════════════════════════════════════════════
+function showSub(name) {
+  el('sub-field').hidden = name !== 'field';
+  el('sub-route').hidden = name !== 'route';
+  el('stField').classList.toggle('active', name === 'field');
+  el('stRoute').classList.toggle('active', name === 'route');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAN — MARK OPERATIONS
+// ═══════════════════════════════════════════════════════════════
+function toggleAddMark() {
+  const list = el('addMarkList');
+  list.hidden = !list.hidden;
+}
+
+function uiAddMark(name, kind, rounding) {
+  el('addMarkList').hidden = true;
+  const mark = RaceCore.addMark({ name, kind, rounding });
+  selectMark(mark.id);
+  renderMarkList();
+  el('planMsg').textContent = `Tap chart to place "${name}"`;
+  planPlotter.startPick(ll => {
+    RaceCore.updateMark(selectedMarkId, { lat: ll.lat, lon: ll.lon });
+    el('planMsg').textContent = 'Tap chart to place selected mark';
+    renderMarkList();
+    renderMarkDetail();
+    planRedraw();
+  });
+}
+
+function selectMark(id) {
+  selectedMarkId = id;
+  renderMarkList();
+  renderMarkDetail();
+}
+
+function deleteMark(id) {
+  RaceCore.removeMark(id);
+  if (selectedMarkId === id) selectMark(null);
+  renderMarkList();
+  planRedraw();
+}
+
+function renderMarkList() {
+  const list = el('markList');
+  const marks = state.field.marks;
+  if (marks.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;text-align:center;padding:12px 0">No marks yet — tap + ADD</div>';
+    return;
+  }
+  list.innerHTML = marks.map(m => {
+    const conf = m.confidence_m != null ? ` ±${Math.round(m.confidence_m)}m` : '';
+    const pos  = m.lat != null ? `${m.lat.toFixed(5)}, ${m.lon.toFixed(5)}${conf}` : 'not set';
+    const cls  = m.id === selectedMarkId ? ' active' : '';
+    return `<div class="mark-item${cls}" onclick="selectMark(${m.id})">
+      <button class="mark-del" onclick="event.stopPropagation();deleteMark(${m.id})">&#x2715;</button>
+      <div class="mark-name">${m.name || m.kind}</div>
+      <div class="mark-kind">${m.kind} · ${m.rounding || 'any'}</div>
+      <div class="mark-pos">${pos}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderMarkDetail() {
+  const panel = el('markDetail');
+  if (selectedMarkId == null) { panel.classList.remove('visible'); return; }
+  const m = state.field.marks.find(x => x.id === selectedMarkId);
+  if (!m) { panel.classList.remove('visible'); return; }
+  panel.classList.add('visible');
+  el('detName').value     = m.name || '';
+  el('detKind').value     = m.kind || 'mark';
+  el('detRounding').value = m.rounding || 'any';
+  el('detDist').value     = m.distance_hint_nm != null ? m.distance_hint_nm : '';
+  el('detPos').textContent = m.lat != null ? `${m.lat.toFixed(5)}, ${m.lon.toFixed(5)}` : 'not set';
+
+  const bl = el('bearingList');
+  const bearings = m.bearings || [];
+  if (bearings.length === 0) {
+    bl.innerHTML = '<div style="color:var(--muted);font-size:0.7rem">No bearings yet</div>';
+  } else {
+    bl.innerHTML = bearings.map((b, i) => `
+      <div class="bearing-row ${b.excluded ? 'excluded' : ''}">
+        <div>
+          <span class="brg-val">${Math.round(b.bearing_mag)}°</span>
+          <span class="brg-src">&nbsp;${b.source}</span>
+        </div>
+        <button class="btn small" onclick="togglePlanBearing(${i})">${b.excluded ? 'INCLUDE' : 'EXCLUDE'}</button>
+      </div>`).join('');
+  }
+}
+
+function updateMarkDetail(field, value) {
+  if (selectedMarkId == null) return;
+  RaceCore.updateMark(selectedMarkId, { [field]: value });
+  renderMarkList();
+  updateLineInfo();
+}
+
+function pingMark() {
+  if (selectedMarkId == null) return;
+  if (live.lat == null) { alert('No GPS fix yet.'); return; }
+  RaceCore.updateMark(selectedMarkId, { lat: live.lat, lon: live.lon });
+  renderMarkList(); renderMarkDetail(); planRedraw();
+}
+
+function tapMapMark() {
+  if (selectedMarkId == null) return;
+  const m = state.field.marks.find(x => x.id === selectedMarkId);
+  el('planMsg').textContent = `Tap chart to place "${m && m.name || 'mark'}"`;
+  planPlotter.startPick(ll => {
+    RaceCore.updateMark(selectedMarkId, { lat: ll.lat, lon: ll.lon });
+    el('planMsg').textContent = 'Tap chart to place selected mark';
+    renderMarkList(); renderMarkDetail(); planRedraw();
+  });
+}
+
+function clearMarkPos() {
+  if (selectedMarkId == null) return;
+  RaceCore.updateMark(selectedMarkId, { lat: null, lon: null });
+  renderMarkList(); renderMarkDetail(); planRedraw();
+}
+
+function togglePlanBearing(idx) {
+  if (selectedMarkId == null) return;
+  const m = state.field.marks.find(x => x.id === selectedMarkId);
+  if (!m || !m.bearings || !m.bearings[idx]) return;
+  m.bearings[idx].excluded = !m.bearings[idx].excluded;
+  RaceCore.solveMark(selectedMarkId);
+  RaceCore.saveState();
+  renderMarkDetail(); renderMarkList(); planRedraw();
+}
+
+function addManualBearing() {
+  if (selectedMarkId == null) { alert('Select a mark first.'); return; }
+  if (live.lat == null) { alert('No GPS fix yet.'); return; }
+  const brg = parseFloat(prompt('Enter magnetic bearing to mark (°):'));
+  if (isNaN(brg)) return;
+  RaceCore.addBearing(selectedMarkId, live.lat, live.lon, brg, 'manual');
+  renderMarkDetail(); renderMarkList(); planRedraw();
+}
+
+function clearAll() {
+  if (!confirm('Clear all marks, legs and race state?')) return;
+  RaceCore.clearState();
+  location.reload();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAN — START LINE INFO
+// ═══════════════════════════════════════════════════════════════
+function updateLineInfo() {
+  const info = RaceCore.startLineInfo();
+  if (!info) {
+    el('lineLen').textContent = '—';
+    el('lineBrg').textContent = '—';
+    el('lineFav').textContent = '—';
+    return;
+  }
+  el('lineLen').textContent = `${Math.round(info.length_m)} m`;
+  el('lineBrg').textContent = `${Math.round(info.bearing)}° / ${Math.round((info.bearing + 180) % 360)}°`;
+  if (live.twd != null && info.pin && info.rc) {
+    const dot = Math.cos(RaceCore.angleDiff(live.twd, info.bearing) * RaceCore.RAD);
+    el('lineFav').textContent = Math.abs(dot) < 0.1 ? 'Square' : (dot > 0 ? (info.rc.name || 'RC') : (info.pin.name || 'Pin'));
+  } else {
+    el('lineFav').textContent = '—';
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAN — COURSE / LEG OPERATIONS
+// ═══════════════════════════════════════════════════════════════
+function onCourseTypeChange() {
+  state.course.type = el('courseType').value;
+  el('lapsRow').style.display = state.course.type === 'carousel' ? 'flex' : 'none';
+  RaceCore.rebuildSequence();
+  RaceCore.saveState();
+}
+
+function onLapsChange() {
+  state.course.laps = parseInt(el('lapsInput').value) || 1;
+  RaceCore.rebuildSequence();
+  RaceCore.saveState();
+}
+
+function openAddLeg() {
+  const sel = el('legMarkSel');
+  sel.innerHTML = '<option value="">— pick a mark —</option>' +
+    state.field.marks.map(m => `<option value="${m.id}">${m.name || m.kind}</option>`).join('');
+  sel.style.display = '';
+  el('legMarkConfirm').style.display = '';
+}
+
+function confirmAddLeg() {
+  const sel = el('legMarkSel');
+  const markId = parseInt(sel.value);
+  if (!markId) return;
+  const m = state.field.marks.find(x => x.id === markId);
+  RaceCore.addLeg(markId, m ? (m.name || m.kind) : String(markId));
+  sel.style.display = 'none';
+  el('legMarkConfirm').style.display = 'none';
+  renderLegList();
+}
+
+function renderLegList() {
+  const legs = state.course.legs || [];
+  const list = el('legList');
+  if (legs.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.75rem;text-align:center;padding:12px 0">No legs yet</div>';
+    return;
+  }
+  list.innerHTML = legs.map((leg, i) => {
+    const m = state.field.marks.find(x => x.id === leg.mark_id);
+    const label = m ? (m.name || m.kind) : `Mark #${leg.mark_id}`;
+    return `<div class="leg-item">
+      <span class="leg-num">${i + 1}.</span>
+      <span class="leg-name">${label}</span>
+      ${i > 0 ? `<button class="leg-up" onclick="moveLegUp(${leg.id})">&#8679;</button>` : '<span style="width:22px"></span>'}
+      ${i < legs.length - 1 ? `<button class="leg-dn" onclick="moveLegDown(${leg.id})">&#8681;</button>` : '<span style="width:22px"></span>'}
+      <button class="leg-del" onclick="deleteLeg(${leg.id})">&#x2715;</button>
+    </div>`;
+  }).join('');
+}
+
+function moveLegUp(id) {
+  const legs = state.course.legs;
+  const idx = legs.findIndex(l => l.id === id);
+  if (idx <= 0) return;
+  RaceCore.moveLeg(id, -1);
+  renderLegList();
+}
+
+function moveLegDown(id) {
+  const legs = state.course.legs;
+  const idx = legs.findIndex(l => l.id === id);
+  if (idx < 0 || idx >= legs.length - 1) return;
+  RaceCore.moveLeg(id, 1);
+  renderLegList();
+}
+
+function deleteLeg(id) {
+  RaceCore.removeLeg(id);
+  renderLegList();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// PLAN — CHART
+// ═══════════════════════════════════════════════════════════════
+function planRedraw() {
+  if (!planPlotter) return;
+  state._trackHistory = state._trackHistory || [];
+  if (live.lat != null) {
+    const last = state._trackHistory[state._trackHistory.length - 1];
+    if (!last || RaceCore.geoDist(last, { lat: live.lat, lon: live.lon }) > 3) {
+      state._trackHistory.push({ lat: live.lat, lon: live.lon });
+      if (state._trackHistory.length > 120) state._trackHistory.shift();
+    }
+  }
+  planPlotter.draw(live, state, null);
+  updateLineInfo();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RACE — MAIN TICK
+// ═══════════════════════════════════════════════════════════════
+function raceActivate() { raceTick(); }
+
+function raceTick() {
+  if (!racePlotter) return;
+  updateLiveStrip();
+  const route = calculateRoute();
+  updateStatusBanner(route);
+  updateRoutePanel(route);
+  updateEta(route);
+  updateProgress();
+  updateRaceTrack();
+  racePlotter.draw(live, state, route);
+}
+
+function updateLiveStrip() {
+  const fmt = RaceCore.fmt;
+  el('liveTws').textContent = live.tws != null ? fmt(live.tws, 1) : '—';
+  el('liveTwd').textContent = live.twd != null ? Math.round(live.twd) : '—';
+  el('liveTwa').textContent = live.twa != null ? Math.round(live.twa) : '—';
+  el('liveSog').textContent = live.sog != null ? fmt(live.sog, 1) : '—';
+  el('liveCog').textContent = live.cog != null ? Math.round(live.cog) : '—';
+  el('liveHdg').textContent = live.hdg != null ? Math.round(live.hdg) : '—';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RACE — ROUTING
+// ═══════════════════════════════════════════════════════════════
+function calculateRoute() {
+  const polar  = RaceCore.getPolar();
+  const target = RaceCore.currentTarget();
+  const leg    = RaceCore.currentLegLabel();
+  const out = {
+    status: null, legClass: '', portBrg: null, stbdBrg: null,
+    portDist: null, stbdDist: null, favored: null,
+    distToMark: null, brgToMark: null, vmgNow: null, vmgOpt: null,
+    etaSec: null, leg,
+  };
+
+  if (!polar || !target || target.lat == null || live.twd == null || live.tws == null || live.lat == null) {
+    out.status = 'WAITING FOR DATA';
+    return out;
+  }
+
+  const isUpwind = leg === 'upwind' || leg === 'prestart';
+  const optList  = isUpwind ? polar.beat_optimal : polar.run_optimal;
+  const opt      = RaceCore.interpOptimal(optList, live.tws);
+  if (!opt) { out.status = 'NO POLAR DATA'; return out; }
+
+  const boat = { lat: live.lat, lon: live.lon };
+  out.distToMark = RaceCore.geoDist(boat, target);
+  out.brgToMark  = RaceCore.geoBearing(boat, target);
+
+  if (isUpwind) {
+    out.portBrg = (live.twd - opt.twa + 360) % 360;
+    out.stbdBrg = (live.twd + opt.twa) % 360;
+  } else {
+    const off = 180 - opt.twa;
+    out.portBrg = (live.twd + 180 + off) % 360;
+    out.stbdBrg = (live.twd + 180 - off + 360) % 360;
+  }
+
+  out.portDist = _perpToLayline(boat, target, out.portBrg);
+  out.stbdDist = _perpToLayline(boat, target, out.stbdBrg);
+
+  const pProj = out.distToMark * Math.cos(RaceCore.angleDiff(out.brgToMark, out.portBrg) * RaceCore.RAD);
+  const sProj = out.distToMark * Math.cos(RaceCore.angleDiff(out.brgToMark, out.stbdBrg) * RaceCore.RAD);
+  out.favored  = pProj > sProj ? 'PORT' : 'STBD';
+
+  if (live.sog != null && live.cog != null) {
+    const d = RaceCore.angleDiff(live.cog, out.brgToMark);
+    out.vmgNow = live.sog * Math.cos(d * RaceCore.RAD);
+  }
+  out.vmgOpt = isUpwind
+    ? opt.sog * Math.cos(opt.twa * RaceCore.RAD)
+    : opt.sog * Math.cos((180 - opt.twa) * RaceCore.RAD);
+
+  const LAYLINE_M = 30;
+  const twaSign   = live.twa != null && live.twa <= 180 ? 1 : -1;
+  const onPort    = out.portDist < LAYLINE_M;
+  const onStbd    = out.stbdDist < LAYLINE_M;
+
+  if (onPort && twaSign > 0) {
+    out.status = isUpwind ? 'TACK TO PORT' : 'GYBE TO PORT'; out.legClass = 'tack';
+  } else if (onStbd && twaSign < 0) {
+    out.status = isUpwind ? 'TACK TO STBD' : 'GYBE TO STBD'; out.legClass = 'tack';
+  } else {
+    const closeM = 200;
+    if (out.portDist < closeM || out.stbdDist < closeM) {
+      const dist = Math.min(out.portDist, out.stbdDist);
+      out.status = `LAYLINE IN ${Math.round(dist)} m — PREPARE`; out.legClass = 'layline';
+    } else {
+      out.status = `SAIL ON — ${out.favored} TACK FAVORED`; out.legClass = 'sail';
+    }
+  }
+
+  const nearDist = Math.min(out.portDist, out.stbdDist);
+  if (live.sog > 0.1 && nearDist < 2000) {
+    const laylineBrg = out.portDist < out.stbdDist ? out.portBrg : out.stbdBrg;
+    const cogDelta   = RaceCore.angleDiff(laylineBrg, live.cog || out.brgToMark);
+    const perpSpd    = Math.abs(live.sog * Math.sin(cogDelta * RaceCore.RAD));
+    if (perpSpd > 0.05) out.etaSec = (nearDist / RaceCore.M_PER_NM) / perpSpd * 3600;
+  }
+
+  return out;
+}
+
+function _perpToLayline(boat, mark, tackBrg) {
+  const distM        = RaceCore.geoDist(boat, mark);
+  const brgBoatToMark = RaceCore.geoBearing(boat, mark);
+  const laylineDir   = (tackBrg + 180) % 360;
+  const delta        = RaceCore.angleDiff(laylineDir, brgBoatToMark);
+  return Math.abs(distM * Math.sin(delta * RaceCore.RAD));
+}
+
+function updateStatusBanner(r) {
+  const big = el('statusBig');
+  big.className = 'status-big ' + (r.legClass || '');
+  el('statusTxt').textContent = r.status || 'WAITING FOR DATA…';
+}
+
+function updateRoutePanel(r) {
+  const M_PER_NM = RaceCore.M_PER_NM;
+  const fmt = RaceCore.fmt;
+  el('distMark').textContent = r.distToMark != null ? `${(r.distToMark / M_PER_NM).toFixed(2)} nm` : '—';
+  el('brgMark').textContent  = r.brgToMark  != null ? `${Math.round(r.brgToMark)}°` : '—';
+  el('portLL').textContent   = r.portDist   != null ? `${Math.round(r.portDist)} m` : '—';
+  el('stbdLL').textContent   = r.stbdDist   != null ? `${Math.round(r.stbdDist)} m` : '—';
+
+  const fav = el('favTack');
+  fav.textContent = r.favored || '—';
+  fav.className = 'v ' + (r.favored === 'PORT' ? 'port' : r.favored === 'STBD' ? 'stbd' : '');
+
+  const vmgN = r.vmgNow != null ? fmt(r.vmgNow, 2) : '—';
+  const vmgO = r.vmgOpt != null ? fmt(r.vmgOpt, 2) : '—';
+  el('vmg').textContent = `${vmgN} / ${vmgO} kt`;
+}
+
+function updateEta(r) {
+  const etaEl = el('etaValue');
+  el('etaLabel').textContent = r.leg === 'downwind' ? 'ETA TO GYBE' : 'ETA TO TACK';
+  if (r.etaSec == null) {
+    etaEl.textContent = '—'; etaEl.className = 'eta-value'; return;
+  }
+  etaEl.textContent = RaceCore.fmtDuration(r.etaSec);
+  etaEl.className   = 'eta-value' + (r.etaSec < 30 ? ' danger' : r.etaSec < 60 ? ' warn' : '');
+}
+
+function updateProgress() {
+  const { course, progress } = state;
+  const seq  = course.sequence || [];
+  const idx  = progress.current_leg_idx || 0;
+  const leg  = RaceCore.currentLegLabel();
+  const legLabels = { upwind: 'UPWIND ▲', downwind: 'DOWNWIND ▼', prestart: 'PRE-START', unknown: '—' };
+  el('legBadge').textContent = legLabels[leg] || leg.toUpperCase();
+  const lap  = (progress.lap || 0) + 1;
+  const laps = course.laps || 1;
+  el('lapLabel').textContent = seq.length > 0 ? `Lap ${lap}/${laps}` : '';
+  el('progressFill').style.width = seq.length > 0 ? `${(idx / seq.length) * 100}%` : '0%';
+}
+
+function updateRaceTrack() {
+  if (live.lat == null) return;
+  const last = trackHistory[trackHistory.length - 1];
+  if (!last || RaceCore.geoDist(last, { lat: live.lat, lon: live.lon }) > 3) {
+    trackHistory.push({ lat: live.lat, lon: live.lon });
+    if (trackHistory.length > 120) trackHistory.shift();
+  }
+  state._trackHistory = trackHistory;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RACE — ACTIONS
+// ═══════════════════════════════════════════════════════════════
+function markRounded() { RaceCore.forceAdvance(); raceTick(); }
+
+function togglePause() {
+  paused = !paused;
+  el('pauseBtn').textContent = paused ? 'RESUME' : 'PAUSE';
+  el('pauseBtn').classList.toggle('warn', paused);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// BEARING SHEET
+// ═══════════════════════════════════════════════════════════════
+let activeTab = 'n2k', phoneHeading = null, phoneListener = null;
+
+function openBearingSheet() {
+  const sel = el('bearingTarget');
+  const marks = state.field.marks.filter(m => m.kind === 'mark');
+  sel.innerHTML = marks.length
+    ? marks.map(m => `<option value="${m.id}">${m.name || m.kind}</option>`).join('')
+    : '<option value="">No marks defined</option>';
+
+  const t = RaceCore.currentTarget();
+  if (t && t.kind === 'mark') sel.value = t.id;
+
+  el('sheetHdg').textContent = live.hdg != null ? `${Math.round(live.hdg)}°` : '—';
+  el('bearingSheet').classList.add('open');
+  refreshSheetBearingList();
+}
+
+function closeBearingSheet(ev) {
+  if (ev && ev.target !== el('bearingSheet')) return;
+  el('bearingSheet').classList.remove('open');
+  if (phoneListener) {
+    window.removeEventListener('deviceorientationabsolute', phoneListener);
+    window.removeEventListener('deviceorientation', phoneListener);
+    phoneListener = null;
+  }
+}
+
+function setTab(tab) {
+  activeTab = tab;
+  ['n2k','manual','phone'].forEach(t => {
+    const cap = t.charAt(0).toUpperCase() + t.slice(1);
+    el(`tab${cap}`).classList.toggle('active', t === tab);
+    el(`pane${cap}`).style.display = t === tab ? '' : 'none';
+  });
+  if (tab === 'n2k') el('sheetHdg').textContent = live.hdg != null ? `${Math.round(live.hdg)}°` : '—';
+}
+
+function captureN2k() {
+  if (live.lat == null) { alert('No GPS fix.'); return; }
+  if (live.hdg == null) { alert('No heading.'); return; }
+  _captureBearing(live.hdg, 'n2k');
+}
+
+function captureManual() {
+  const brg = parseFloat(el('manualBrg').value);
+  if (isNaN(brg)) { alert('Enter a bearing.'); return; }
+  if (live.lat == null) { alert('No GPS fix.'); return; }
+  _captureBearing(brg, 'manual');
+}
+
+function requestPhone() {
+  if (typeof DeviceOrientationEvent !== 'undefined' && DeviceOrientationEvent.requestPermission) {
+    DeviceOrientationEvent.requestPermission().then(r => { if (r === 'granted') _startPhone(); });
+  } else {
+    _startPhone();
+  }
+}
+
+function _startPhone() {
+  el('phoneReqBtn').textContent = 'ACTIVE';
+  phoneListener = (e) => {
+    const alpha = e.webkitCompassHeading != null ? e.webkitCompassHeading
+      : (e.alpha != null ? (360 - e.alpha) % 360 : null);
+    if (alpha != null) { phoneHeading = alpha; el('phoneBrg').textContent = `${Math.round(alpha)}°`; }
+  };
+  window.addEventListener('deviceorientationabsolute', phoneListener, true);
+  window.addEventListener('deviceorientation', phoneListener, true);
+}
+
+function capturePhone() {
+  if (phoneHeading == null) { alert('No phone compass reading.'); return; }
+  if (live.lat == null) { alert('No GPS fix.'); return; }
+  _captureBearing(phoneHeading, 'mag');
+}
+
+function _captureBearing(bearingMag, source) {
+  const sel  = el('bearingTarget');
+  const markId = parseInt(sel.value);
+  if (!markId) { alert('Select a mark first.'); return; }
+  RaceCore.addBearing(markId, live.lat, live.lon, bearingMag, source);
+  refreshSheetBearingList();
+  raceTick();
+}
+
+function refreshSheetBearingList() {
+  const sel = el('bearingTarget');
+  const markId = parseInt(sel.value);
+  const m   = state.field.marks.find(x => x.id === markId);
+  const bl  = el('sheetBearingList');
+  if (!m || !m.bearings || m.bearings.length === 0) {
+    bl.innerHTML = '<div style="color:var(--muted);font-size:0.7rem;padding:4px 0">No bearings yet</div>';
+    return;
+  }
+  bl.innerHTML = m.bearings.map((b, i) => `
+    <div class="bearing-row ${b.excluded ? 'excluded' : ''}">
+      <div>
+        <span class="brg-val">${Math.round(b.bearing_mag)}°</span>
+        <span class="brg-src">&nbsp;${b.source}</span>
+      </div>
+      <div style="display:flex;gap:4px;align-items:center">
+        ${m.confidence_m != null && i === m.bearings.length - 1
+          ? `<span style="font-size:0.62rem;color:var(--muted)">±${Math.round(m.confidence_m)}m</span>` : ''}
+        <button class="btn small" onclick="toggleSheetBearing(${markId},${i})">${b.excluded ? 'INCL' : 'EXCL'}</button>
+      </div>
+    </div>`).join('');
+}
+
+function toggleSheetBearing(markId, idx) {
+  const m = state.field.marks.find(x => x.id === markId);
+  if (!m || !m.bearings[idx]) return;
+  m.bearings[idx].excluded = !m.bearings[idx].excluded;
+  RaceCore.solveMark(markId);
+  RaceCore.saveState();
+  refreshSheetBearingList();
+  raceTick();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TUNE
+// ═══════════════════════════════════════════════════════════════
+function saveBoat() {
+  state.boat.name      = el('boatName').value.trim() || 'My Boat';
+  state.boat.polar_url = el('polarFile').value.trim() || 'first36.json';
+  RaceCore.saveState();
+}
+
+function saveMqttConfig() {
+  state.mqtt.host = el('mqttHost').value.trim() || 'esp-nmea.local';
+  state.mqtt.port = parseInt(el('mqttPort').value) || 9001;
+  RaceCore.saveState();
+}
+
+function reconnectMqtt() {
+  saveMqttConfig();
+  addLog(`[MQTT] Reconnecting to ${state.mqtt.host}:${state.mqtt.port}…`);
+  RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
+}
+
+async function testMqttConnection() {
+  const host = el('mqttHost').value || 'esp-nmea.local';
+  const port = parseInt(el('mqttPort').value) || 9001;
+  
+  addLog(`[MQTT] Testing connection to ${host}:${port}…`);
+  
+  try {
+    const result = await RaceCore.testConnection(host, port);
+    if (result.success) {
+      addLog(`[MQTT] ✓ Connection successful to ${result.url}`);
+    } else {
+      addLog(`[MQTT] ✗ Connection failed: ${result.error}`);
+    }
+  } catch (error) {
+    addLog(`[MQTT] ✗ Test error: ${error.message || error}`);
+  }
+}
+
+async function diagnoseMqttNetwork() {
+  const host = el('mqttHost').value || 'esp-nmea.local';
+  const port = parseInt(el('mqttPort').value) || 9001;
+  
+  addLog(`[Network] Running diagnostics for ${host}:${port}…`);
+  
+  try {
+    const results = await RaceCore.diagnoseNetwork(host, port);
+    addLog(`[Network] Diagnostics complete:`);
+    results.forEach(result => {
+      const status = result.result === 'Success' ? '✓' : '✗';
+      const url = result.url ? ` (${result.url})` : '';
+      const error = result.error ? ` - ${result.error}` : '';
+      addLog(`[Network] ${status} ${result.test}${url}${error}`);
+    });
+  } catch (error) {
+    addLog(`[Network] ✗ Diagnostics error: ${error.message || error}`);
+  }
+}
+
+function tuneUpdate() {
+  updateLiveData();
+  updateDeviation();
+  updatePolarDisplay();
+  updateDiagnostics();
+}
+
+function updateLiveData() {
+  const fmt = RaceCore.fmt;
+  const l = live;
+  el('livePosVal').textContent   = l.lat != null ? `${l.lat.toFixed(5)}, ${l.lon.toFixed(5)}` : '—';
+  el('liveSogVal').textContent   = l.sog != null ? `${fmt(l.sog, 1)} kt` : '—';
+  el('liveCogVal').textContent   = l.cog != null ? `${Math.round(l.cog)}°` : '—';
+  el('liveHdgVal').textContent   = l.hdg != null ? `${Math.round(l.hdg)}°` : '—';
+  el('liveRotVal').textContent   = l.rot != null ? `${fmt(l.rot, 1)} °/min` : '—';
+  el('liveTwVal').textContent    = l.tws != null ? `${fmt(l.tws, 1)} kt / ${l.twd != null ? Math.round(l.twd)+'°' : '—'}` : '—';
+  el('liveAwVal').textContent    = l.aws != null ? `${fmt(l.aws, 1)} kt / ${l.awa != null ? Math.round(l.awa)+'°' : '—'}` : '—';
+  el('liveDepthVal').textContent = l.water_depth != null ? `${fmt(l.water_depth, 1)} m` : '—';
+  el('liveWaterTmpVal').textContent = l.water_temp != null ? `${fmt(l.water_temp, 1)} °C` : '—';
+  const fixNames = ['NO FIX', 'GNSS', 'DGNSS', 'PPS', 'RTK', 'FLOAT RTK'];
+  el('liveFixVal').textContent = `${fixNames[l.fix] || (l.fix ?? '—')} / ${l.sats || '0'}`;
+  el('windSamples').textContent = `${(state.wind_samples || []).length} / 500`;
+}
+
+function updatePolarDisplay() {
+  const p = RaceCore.getPolar();
+  if (!p || live.tws == null) return;
+  el('polarLiveTws').textContent = `${RaceCore.fmt(live.tws, 1)} kt`;
+  const beat = RaceCore.interpOptimal(p.beat_optimal, live.tws);
+  const run  = RaceCore.interpOptimal(p.run_optimal,  live.tws);
+  el('polarBeat').textContent = beat ? `${RaceCore.fmt(beat.twa, 1)}° / ${RaceCore.fmt(beat.sog, 2)} kt` : '—';
+  el('polarRun').textContent  = run  ? `${RaceCore.fmt(run.twa, 1)}° / ${RaceCore.fmt(run.sog, 2)} kt`  : '—';
+}
+
+function updateDiagnostics() {
+  const l = live;
+  el('diagMqtt').textContent    = RaceCore.isMqttConnected() ? 'CONNECTED' : 'DISCONNECTED';
+  el('diagMqtt').className      = 'v ' + (RaceCore.isMqttConnected() ? 'good' : 'warn');
+  el('diagHeap').textContent    = l.heap != null ? `${Math.round(l.heap / 1024)} kB` : '—';
+  el('diagRssi').textContent    = l.rssi != null ? `${l.rssi} dBm` : '—';
+  el('diagClients').textContent = l.clients != null ? l.clients : '—';
+  el('diagUptime').textContent  = l.uptime != null ? fmtUptime(l.uptime) : '—';
+}
+
+function fmtUptime(sec) {
+  const h = Math.floor(sec / 3600), m = Math.floor((sec % 3600) / 60), s = sec % 60;
+  return h > 0 ? `${h}h ${m}m` : m > 0 ? `${m}m ${s}s` : `${s}s`;
+}
+
+function updateDeviation() {
+  const dev = state.boat.deviation;
+  const calCount = RaceCore.deviationProgress();
+  const pct = (calCount / 8) * 100;
+  el('calSummary').textContent = `${calCount} / 8 buckets calibrated`;
+  el('calFill').style.width    = pct + '%';
+  el('calTag').textContent     = calCount === 8 ? 'FULL' : calCount > 0 ? 'IN PROGRESS' : 'NOT STARTED';
+  el('calTag').className       = 'status-tag' + (calCount === 8 ? ' set' : '');
+
+  el('devTableBody').innerHTML = dev.offsets.map((off, i) => {
+    const lo = i * 45, hi = (i + 1) * 45;
+    const samples = (dev.samples[i] || []).length;
+    const cal  = dev.calibrated[i];
+    const sign = off > 0.5 ? 'dev-offset-pos' : off < -0.5 ? 'dev-offset-neg' : '';
+    return `<tr class="${cal ? 'calibrated' : 'uncalibrated'}">
+      <td>${lo}°–${hi}°</td>
+      <td class="${sign}">${off >= 0 ? '+' : ''}${off.toFixed(1)}°</td>
+      <td>${samples}</td>
+      <td>${cal ? '✓' : '…'}</td>
+    </tr>`;
+  }).join('');
+
+  if (live.variation != null) {
+    el('variationVal').textContent = `${live.variation >= 0 ? '+' : ''}${live.variation.toFixed(1)}°`;
+  }
+  if (live.hdg != null) {
+    const corr = RaceCore.correctedHeading(live.hdg, live.variation);
+    el('corrHdg').textContent = `${corr.toFixed(1)}° true`;
+  }
+}
+
+function exportDeviation() {
+  const dev = state.boat.deviation;
+  const data = {
+    boat: state.boat.name,
+    offsets: dev.offsets,
+    calibrated: dev.calibrated,
+    sample_count_per_bucket: dev.samples.map(s => s.length),
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `deviation-${(state.boat.name || 'boat').replace(/\s+/g, '-')}.json`;
+  a.click();
+}
+
+function importDeviation(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const d = JSON.parse(e.target.result);
+      if (d.offsets && d.offsets.length === 8) {
+        state.boat.deviation.offsets    = d.offsets;
+        state.boat.deviation.calibrated = d.calibrated || new Array(8).fill(false);
+        RaceCore.saveState();
+        updateDeviation();
+        addLog('[TUNE] Deviation imported');
+      } else {
+        alert('Invalid deviation file format.');
+      }
+    } catch(err) { alert('Could not parse file: ' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+function clearDeviation() {
+  if (!confirm('Clear all compass deviation data?')) return;
+  state.boat.deviation.samples    = [[], [], [], [], [], [], [], []];
+  state.boat.deviation.offsets    = [0, 0, 0, 0, 0, 0, 0, 0];
+  state.boat.deviation.calibrated = new Array(8).fill(false);
+  RaceCore.saveState();
+  updateDeviation();
+  addLog('[TUNE] Deviation cleared');
+}
+
+function clearWindSamples() {
+  if (!confirm('Clear all wind samples?')) return;
+  state.wind_samples = [];
+  RaceCore.saveState();
+  el('windSamples').textContent = '0 / 500';
+  addLog('[TUNE] Wind samples cleared');
+}
+
+// ═══════════════════════════════════════════════════════════════
+// CONNECTION BADGE
+// ═══════════════════════════════════════════════════════════════
+function updateMqttBadge(connected) {
+  el('mqttDot').className    = 'status-dot' + (connected ? ' connected' : '');
+  el('mqttStatus').textContent = connected ? 'MQTT' : 'Disconnected';
+}
+
+function updateDataAge() {
+  const l = RaceCore.getLive();
+  if (!l.lastTs) { el('dataAge').textContent = ''; return; }
+  const ageSec = Math.round((Date.now() - l.lastTs) / 1000);
+  el('dataAge').textContent = ageSec < 2 ? '' : `${ageSec}s ago`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// LOG
+// ═══════════════════════════════════════════════════════════════
+function addLog(msg) {
+  const ts = new Date().toLocaleTimeString('en', { hour12: false });
+  logLines.push(`${ts}  ${msg}`);
+  if (logLines.length > 40) logLines.shift();
+  const logEl = el('diagLog');
+  logEl.textContent = logLines.join('\n');
+  logEl.scrollTop   = logEl.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// UTIL
+// ═══════════════════════════════════════════════════════════════
+function el(id) { return document.getElementById(id); }
+</script>
+</body>
+</html>

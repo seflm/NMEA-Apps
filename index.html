@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>ESP-NMEA | Main Menu</title>
+<link rel="stylesheet" href="shared/race-theme.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 16px;
+  padding-top: max(16px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  text-align: center;
+}
+
+header h1 {
+  font-size: 1.1rem;
+  color: var(--accent);
+  letter-spacing: 0.15em;
+}
+
+header p {
+  font-size: 0.7rem;
+  color: var(--muted);
+  margin-top: 4px;
+}
+
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 24px;
+  gap: 16px;
+}
+
+.app-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  width: 100%;
+  max-width: 700px;
+}
+
+.app-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px 24px;
+  text-decoration: none;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  transition: border-color 0.2s, transform 0.2s, box-shadow 0.2s;
+  min-height: 200px;
+  text-align: center;
+}
+
+.app-card:hover {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 212, 255, 0.1);
+}
+
+.app-card:active {
+  transform: scale(0.98);
+  border-color: var(--accent);
+}
+
+.app-icon {
+  font-size: 3rem;
+  margin-bottom: 8px;
+}
+
+.app-title {
+  font-size: 1.4rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-weight: bold;
+}
+
+.app-subtitle {
+  font-size: 0.8rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.app-meta {
+  font-size: 0.65rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-top: 8px;
+}
+
+footer {
+  padding: 16px;
+  padding-bottom: max(16px, env(safe-area-inset-bottom));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  text-align: center;
+  font-size: 0.65rem;
+  color: var(--muted);
+  border-top: 1px solid var(--border);
+}
+
+/* Tablet breakpoint */
+@media (max-width: 768px) {
+  .app-grid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+  }
+  
+  .app-card {
+    padding: 28px 20px;
+    min-height: 160px;
+  }
+  
+  .app-icon {
+    font-size: 2.5rem;
+  }
+  
+  .app-title {
+    font-size: 1.2rem;
+  }
+}
+
+/* Mobile breakpoint */
+@media (max-width: 600px) {
+  main {
+    padding: 16px;
+    padding-left: max(16px, env(safe-area-inset-left));
+    padding-right: max(16px, env(safe-area-inset-right));
+    justify-content: flex-start;
+    gap: 16px;
+  }
+  
+  .app-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
+  .app-card {
+    padding: 24px;
+    min-height: 140px;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .app-icon {
+    font-size: 2.5rem;
+    margin-bottom: 4px;
+  }
+  
+  .app-title {
+    font-size: 1.1rem;
+  }
+  
+  .app-subtitle {
+    font-size: 0.75rem;
+  }
+  
+  .app-meta {
+    font-size: 0.6rem;
+    margin-top: 4px;
+  }
+  
+  header h1 {
+    font-size: 0.95rem;
+  }
+  
+  header p {
+    font-size: 0.65rem;
+  }
+}
+
+/* Small mobile breakpoint */
+@media (max-width: 380px) {
+  .app-card {
+    padding: 20px;
+    min-height: 120px;
+    gap: 8px;
+  }
+  
+  .app-icon {
+    font-size: 2rem;
+  }
+  
+  .app-title {
+    font-size: 1rem;
+  }
+  
+  .app-subtitle {
+    font-size: 0.7rem;
+  }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>⚓ ESP-NMEA NAVIGATION SYSTEM</h1>
+  <p>Select an application to launch</p>
+</header>
+
+<main>
+  <div class="app-grid">
+    
+    <a href="app.html" class="app-card">
+      <div class="app-icon">🧭</div>
+      <div class="app-title">RACE ASSISTANT</div>
+      <div class="app-subtitle">Plan • Navigate • Tune</div>
+    </a>
+    
+    <a href="dashboard.html" class="app-card">
+      <div class="app-icon">📊</div>
+      <div class="app-title">DASHBOARD</div>
+      <div class="app-subtitle">Monitor • Analyze</div>
+    </a>
+    
+    <a href="simple.html" class="app-card">
+      <div class="app-icon">🔢</div>
+      <div class="app-title">SIMPLE</div>
+      <div class="app-subtitle">Big Digits • Essential Data</div>
+    </a>
+    
+  </div>
+</main>
+
+<footer>
+  ESP-NMEA Firmware • MQTT/WebSocket Data Bridge
+</footer>
+
+</body>
+</html>
