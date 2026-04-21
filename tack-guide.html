@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Tack Guide</title>
+<link rel="stylesheet" href="shared/race-theme.css">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Header ─────────────────────────────────────────────────────────── */
+header {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  padding: 12px 16px;
+  padding-top: max(12px, env(safe-area-inset-top));
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-shrink: 0;
+  height: 56px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent);
+  font-size: 1.2rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+header h1 {
+  font-size: 0.9rem;
+  color: var(--accent);
+  letter-spacing: 0.1em;
+}
+
+.conn-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--danger);
+  flex-shrink: 0;
+  transition: background 0.3s;
+}
+.dot.live { background: var(--good); box-shadow: 0 0 6px var(--good); }
+.dot.stale { background: var(--warn); }
+
+/* ── Live strip ─────────────────────────────────────────────────────── */
+.live-strip {
+  background: var(--card);
+  border-bottom: 1px solid var(--border);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  flex-shrink: 0;
+}
+
+.ls-cell {
+  padding: 8px 12px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+}
+.ls-cell:last-child { border-right: none; }
+
+.ls-lbl {
+  font-size: 0.6rem;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.ls-val {
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Mode badge ─────────────────────────────────────────────────────── */
+.mode-section {
+  padding: 14px 16px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.mode-badge {
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.18em;
+  padding: 5px 18px;
+  border-radius: 20px;
+  text-transform: uppercase;
+  background: rgba(0, 212, 255, 0.15);
+  color: var(--accent);
+  border: 1px solid var(--accent);
+}
+
+.mode-badge.downwind {
+  background: rgba(255, 149, 0, 0.15);
+  color: var(--warn);
+  border-color: var(--warn);
+}
+
+.tack-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── Main maneuver display ──────────────────────────────────────────── */
+.maneuver-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 12px 24px;
+  min-height: 0;
+}
+
+.maneuver-title {
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 20px;
+}
+
+.cog-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.cog-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 20px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.cog-type {
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.cog-type.speed { color: var(--good); }
+.cog-type.dist  { color: var(--accent); }
+
+.cog-num {
+  font-size: 4.2rem;
+  font-weight: bold;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.cog-num.speed { color: var(--good); }
+.cog-num.dist  { color: var(--accent); }
+
+.cog-deg {
+  font-size: 1rem;
+  color: var(--muted);
+  letter-spacing: 0.05em;
+}
+
+.cog-sub {
+  font-size: 0.6rem;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
+/* ── Settings panel ─────────────────────────────────────────────────── */
+.settings-wrap {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  padding-bottom: max(0px, env(safe-area-inset-bottom));
+}
+
+.settings-toggle {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font);
+  font-size: 0.65rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 16px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.settings-toggle:hover { color: var(--accent); }
+
+.settings-body {
+  display: none;
+  padding: 12px 16px;
+  padding-left: max(16px, env(safe-area-inset-left));
+  padding-right: max(16px, env(safe-area-inset-right));
+  border-top: 1px solid var(--border);
+  background: var(--card);
+  gap: 8px;
+  flex-direction: column;
+}
+
+.settings-body.open { display: flex; }
+
+.settings-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.settings-row label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  min-width: 36px;
+}
+
+.settings-row input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 0.85rem;
+  padding: 6px 10px;
+}
+
+.settings-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.connect-btn {
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 6px;
+  font-family: var(--font);
+  font-size: 0.75rem;
+  font-weight: bold;
+  letter-spacing: 0.1em;
+  padding: 8px 16px;
+  cursor: pointer;
+  align-self: stretch;
+  text-transform: uppercase;
+}
+
+.connect-btn:active { opacity: 0.8; }
+
+/* ── Mobile adjustments ─────────────────────────────────────────────── */
+@media (max-width: 380px) {
+  .cog-num { font-size: 3.4rem; }
+  .ls-val  { font-size: 1.1rem; }
+  .cog-card { padding: 16px 8px; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <button class="back-btn" onclick="history.length > 1 ? history.back() : location.href='index.html'">←</button>
+    <h1>TACK GUIDE</h1>
+  </div>
+  <div class="conn-wrap">
+    <span class="dot" id="dot"></span>
+    <span id="connLbl">—</span>
+  </div>
+</header>
+
+<div class="live-strip">
+  <div class="ls-cell">
+    <div class="ls-lbl">COG</div>
+    <div class="ls-val" id="lsCog">—</div>
+  </div>
+  <div class="ls-cell">
+    <div class="ls-lbl">TWA</div>
+    <div class="ls-val" id="lsTwa">—</div>
+  </div>
+  <div class="ls-cell">
+    <div class="ls-lbl">TWD</div>
+    <div class="ls-val" id="lsTwd">—</div>
+  </div>
+</div>
+
+<div class="mode-section">
+  <div class="mode-badge" id="modeBadge">—</div>
+  <div class="tack-label" id="tackLabel">waiting for data</div>
+</div>
+
+<div class="maneuver-section">
+  <div class="maneuver-title" id="maneuverTitle">After TACK steer:</div>
+  <div class="cog-grid">
+    <div class="cog-card">
+      <div class="cog-type speed">SPEED</div>
+      <div class="cog-num speed" id="speedCog">—</div>
+      <div class="cog-deg">°</div>
+      <div class="cog-sub" id="speedSub">—</div>
+    </div>
+    <div class="cog-card">
+      <div class="cog-type dist">DISTANCE</div>
+      <div class="cog-num dist" id="distCog">—</div>
+      <div class="cog-deg">°</div>
+      <div class="cog-sub" id="distSub">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="settings-wrap">
+  <button class="settings-toggle" id="settingsToggle" onclick="toggleSettings()">▾ MQTT SETTINGS</button>
+  <div class="settings-body" id="settingsBody">
+    <div class="settings-row">
+      <label>Host</label>
+      <input type="text" id="mqttHost" placeholder="esp-nmea.local">
+    </div>
+    <div class="settings-row">
+      <label>Port</label>
+      <input type="number" id="mqttPort" placeholder="9001" style="max-width:90px">
+      <button class="connect-btn" onclick="doConnect()">Connect</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<script src="shared/race-core.js"></script>
+<script>
+'use strict';
+
+// First 36 polar constants
+const UPWIND_SPEED_TWA   = 63;   // more boat speed (higher TWA)
+const UPWIND_DIST_TWA    = 48;   // more VMG (tighter to wind)
+const DOWNWIND_SPEED_TWA = 130;  // more boat speed (closer to reach)
+const DOWNWIND_DIST_TWA  = 150;  // more VMG (deeper downwind)
+
+const state = RaceCore.loadState();
+let settingsOpen = false;
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('mqttHost').value = state.mqtt.host || 'esp-nmea.local';
+  document.getElementById('mqttPort').value = state.mqtt.port || 9001;
+
+  RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
+
+  RaceCore.on('connect', () => {
+    document.getElementById('dot').className = 'dot live';
+    document.getElementById('connLbl').textContent = 'LIVE';
+  });
+
+  RaceCore.on('disconnect', () => {
+    document.getElementById('dot').className = 'dot';
+    document.getElementById('connLbl').textContent = 'OFF';
+  });
+
+  RaceCore.on('data', ({ live }) => {
+    updateDisplay(live);
+  });
+});
+
+function norm(deg) {
+  return ((deg % 360) + 360) % 360;
+}
+
+function fmtDeg(v) {
+  if (v == null || isNaN(v)) return '—';
+  return Math.round(norm(v)).toString().padStart(3, '0');
+}
+
+function updateDisplay(live) {
+  const { cog, twa, twd } = live;
+
+  // Live strip
+  document.getElementById('lsCog').textContent = cog != null ? fmtDeg(cog) + '°' : '—';
+  document.getElementById('lsTwd').textContent = twd != null ? fmtDeg(twd) + '°' : '—';
+
+  if (twa == null || twd == null) {
+    document.getElementById('lsTwa').textContent = '—';
+    document.getElementById('modeBadge').textContent = '—';
+    document.getElementById('modeBadge').className = 'mode-badge';
+    document.getElementById('tackLabel').textContent = 'waiting for data';
+    document.getElementById('maneuverTitle').textContent = 'After TACK steer:';
+    document.getElementById('speedCog').textContent = '—';
+    document.getElementById('distCog').textContent = '—';
+    document.getElementById('speedSub').textContent = '—';
+    document.getElementById('distSub').textContent = '—';
+    return;
+  }
+
+  // TWA: 0-360 where >180 = port tack (race-core convention)
+  const twAbs  = twa <= 180 ? twa : 360 - twa;
+  const onPort = twa > 180;
+  const isUpwind = twAbs < 90;
+
+  // Live strip TWA — show signed for clarity
+  const twaSigned = onPort ? -Math.round(twAbs) : Math.round(twAbs);
+  document.getElementById('lsTwa').textContent = (twaSigned >= 0 ? '+' : '') + twaSigned + '°';
+
+  // Mode badge
+  const badge = document.getElementById('modeBadge');
+  badge.textContent = isUpwind ? 'UPWIND' : 'DOWNWIND';
+  badge.className = 'mode-badge' + (isUpwind ? '' : ' downwind');
+
+  // Current tack / gybe
+  const side = onPort ? 'PORT' : 'STARBOARD';
+  document.getElementById('tackLabel').textContent =
+    side + (isUpwind ? ' TACK' : ' GYBE');
+
+  // Maneuver label
+  document.getElementById('maneuverTitle').textContent =
+    'After ' + (isUpwind ? 'TACK' : 'GYBE') + ' steer:';
+
+  // Calculate post-maneuver COG range
+  let speedCog, distCog, speedSubTwa, distSubTwa;
+
+  if (isUpwind) {
+    if (onPort) {
+      // Tacking to starboard → COG = TWD - TWA
+      speedCog    = norm(twd - UPWIND_SPEED_TWA);
+      distCog     = norm(twd - UPWIND_DIST_TWA);
+    } else {
+      // Tacking to port → COG = TWD + TWA
+      speedCog    = norm(twd + UPWIND_SPEED_TWA);
+      distCog     = norm(twd + UPWIND_DIST_TWA);
+    }
+    speedSubTwa = UPWIND_SPEED_TWA + '° TWA';
+    distSubTwa  = UPWIND_DIST_TWA  + '° TWA';
+  } else {
+    if (onPort) {
+      // Gybing to starboard → COG = TWD - TWA
+      speedCog    = norm(twd - DOWNWIND_SPEED_TWA);
+      distCog     = norm(twd - DOWNWIND_DIST_TWA);
+    } else {
+      // Gybing to port → COG = TWD + TWA
+      speedCog    = norm(twd + DOWNWIND_SPEED_TWA);
+      distCog     = norm(twd + DOWNWIND_DIST_TWA);
+    }
+    speedSubTwa = DOWNWIND_SPEED_TWA + '° TWA';
+    distSubTwa  = DOWNWIND_DIST_TWA  + '° TWA';
+  }
+
+  document.getElementById('speedCog').textContent = fmtDeg(speedCog);
+  document.getElementById('distCog').textContent  = fmtDeg(distCog);
+  document.getElementById('speedSub').textContent = speedSubTwa;
+  document.getElementById('distSub').textContent  = distSubTwa;
+}
+
+function toggleSettings() {
+  settingsOpen = !settingsOpen;
+  document.getElementById('settingsBody').className =
+    'settings-body' + (settingsOpen ? ' open' : '');
+  document.getElementById('settingsToggle').textContent =
+    (settingsOpen ? '▴' : '▾') + ' MQTT SETTINGS';
+}
+
+function doConnect() {
+  const host = document.getElementById('mqttHost').value.trim() || 'esp-nmea.local';
+  const port = parseInt(document.getElementById('mqttPort').value, 10) || 9001;
+  const s = RaceCore.getState();
+  s.mqtt.host = host;
+  s.mqtt.port = port;
+  RaceCore.saveState();
+  RaceCore.mqttConnect(host, port);
+}
+</script>
+
+</body>
+</html>
