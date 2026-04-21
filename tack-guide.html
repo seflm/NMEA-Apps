@@ -740,6 +740,119 @@ header h1 {
   margin-left: 8px;
   letter-spacing: 0.05em;
 }
+
+/* Readiness / adjust-now (triangulated VMC) */
+.opt-readiness {
+  font-size: 0.65rem;
+  font-weight: bold;
+  color: #4a7a9b;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+.opt-readiness.warn { color: #ff9500; }
+.opt-readiness.stale { color: #ff9500; }
+
+.opt-adjust-row {
+  margin-top: 6px;
+  padding: 8px 0;
+  border-top: 1px solid #1a3a5c;
+}
+.opt-adjust-lbl {
+  font-size: 0.6rem;
+  font-weight: 900;
+  color: #7ab8d4;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+.opt-adjust-val {
+  font-size: 1.35rem;
+  font-weight: 900;
+  color: #30d158;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Mark card — triangulation */
+.mark-active { flex-wrap: wrap; align-items: flex-start; }
+.mark-active-left { min-width: 0; }
+.mark-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  margin-top: 8px;
+  font-size: 0.7rem;
+  color: #cce4f0;
+  font-weight: bold;
+}
+.mark-meta span { color: #7ab8d4; font-weight: 900; }
+.mark-meta .err { color: #ff9500; }
+
+.obs-block {
+  width: 100%;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid #1a3a5c;
+}
+.obs-title {
+  font-size: 0.55rem;
+  font-weight: 900;
+  color: #7ab8d4;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.obs-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 140px;
+  overflow-y: auto;
+}
+.obs-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(7, 15, 28, 0.6);
+  border: 1px solid #1a3a5c;
+  border-radius: 8px;
+  padding: 6px 8px;
+  font-size: 0.65rem;
+}
+.obs-item-brg {
+  font-weight: 900;
+  color: #00d4ff;
+  min-width: 44px;
+  font-variant-numeric: tabular-nums;
+}
+.obs-item-pos {
+  flex: 1;
+  color: #4a7a9b;
+  font-size: 0.6rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.obs-del {
+  background: transparent;
+  border: 1px solid #ff3b30;
+  color: #ff3b30;
+  font-family: var(--font);
+  font-size: 0.55rem;
+  font-weight: 900;
+  padding: 4px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+.obs-del:active { opacity: 0.75; }
+
+.modal-error {
+  font-size: 0.65rem;
+  color: #ff3b30;
+  text-align: center;
+  min-height: 1.2em;
+}
 </style>
 </head>
 <body>
@@ -774,15 +887,15 @@ header h1 {
     <div class="tack-label" id="tackLabel">waiting for data</div>
   </div>
 
-  <!-- PRIMARY: TACK/GYBE trigger COG -->
+  <!-- PRIMARY: post-maneuver VMC COG (triangulated mark) or polar VMG -->
   <div class="optimal-section">
     <div class="opt-header">
       <span class="opt-chip" id="optChip">OPTIMAL</span>
       <span class="opt-maneuver" id="optManeuver">After TACK:</span>
     </div>
-    <!-- Mark-mode label — shown instead of header when mark is set -->
+    <div class="opt-readiness" id="optReadiness" style="display:none"></div>
     <div class="opt-trigger" id="optTrigger" style="display:none">
-      TACK WHEN MARK BEARS:
+      BEST VMC AFTER TACK/GYBE
     </div>
     <div class="opt-row">
       <span class="opt-num" id="optCog">—</span>
@@ -790,7 +903,10 @@ header h1 {
       <span class="opt-delta" id="optDelta">—</span>
     </div>
     <div class="opt-sub" id="optSub">— TWA · — kt TWS</div>
-    <!-- VMC info line — only when mark is set -->
+    <div class="opt-adjust-row" id="optAdjustRow" style="display:none">
+      <div class="opt-adjust-lbl">Adjust now (best VMC, this tack)</div>
+      <div class="opt-adjust-val" id="optAdjustVal">—</div>
+    </div>
     <div class="opt-vmc" id="optVmcRow" style="display:none">
       <span class="opt-vmc-val" id="optVmcVal">—</span>
       <span class="opt-vmc-unit"> kt closing mark</span>
@@ -817,22 +933,25 @@ header h1 {
     </div>
   </div>
 
-  <!-- Mark button / status -->
+  <!-- Mark triangulation -->
   <div class="mark-section">
-    <!-- No mark: big set button -->
     <button class="mark-set-btn" id="markSetBtn" onclick="openMarkModal()">
-      ⊕ SET MARK BEARING
+      ⊕ ADD MARK BEARING
     </button>
-    <!-- Mark active: bearing display + clear -->
     <div class="mark-active" id="markActive" style="display:none">
       <div class="mark-active-left">
-        <div class="mark-active-lbl">MARK BEARING</div>
+        <div class="mark-active-lbl">MARK (TRIANGULATED)</div>
         <div class="mark-active-brg" id="markActiveBrg">—°</div>
         <div class="mark-active-pos" id="markActivePos"></div>
+        <div class="mark-meta" id="markMeta"></div>
+        <div class="obs-block">
+          <div class="obs-title">Bearing observations</div>
+          <div class="obs-list" id="obsList"></div>
+        </div>
       </div>
       <div class="mark-active-right">
-        <button class="mark-edit-btn" onclick="openMarkModal()">EDIT</button>
-        <button class="mark-clr-btn" onclick="clearMark()">CLEAR</button>
+        <button class="mark-edit-btn" onclick="openMarkModal()">ADD</button>
+        <button class="mark-clr-btn" onclick="clearMark()">CLEAR ALL</button>
       </div>
     </div>
   </div>
@@ -864,15 +983,16 @@ header h1 {
 <div class="modal-overlay hidden" id="markModal" onclick="if(event.target===this)closeMarkModal()">
   <div class="modal">
 
-    <div class="modal-title">Set mark bearing</div>
+    <div class="modal-title">Add bearing to mark</div>
 
     <!-- Big bearing display / input -->
     <div class="modal-display">
       <input class="modal-brg-input" type="number" id="modalBrgInput"
              min="0" max="359" inputmode="numeric" placeholder="000">
       <div class="modal-deg-label">degrees</div>
-      <div class="modal-hint">tap number to type · use buttons to nudge</div>
+      <div class="modal-hint">from current GPS position · need 2+ for triangulation</div>
     </div>
+    <div class="modal-error" id="modalError"></div>
 
     <!-- Nudge buttons -->
     <div>
@@ -887,7 +1007,7 @@ header h1 {
     <!-- Action buttons -->
     <div class="modal-actions">
       <button class="modal-btn cancel" onclick="closeMarkModal()">Cancel</button>
-      <button class="modal-btn set" onclick="confirmSetMark()">Set mark</button>
+      <button class="modal-btn set" onclick="confirmSetMark()">Add bearing</button>
     </div>
 
   </div>
@@ -918,13 +1038,28 @@ const UPWIND_VMG_TWA    = 45;
 const DOWNWIND_FAST_TWA = 130;
 const DOWNWIND_VMG_TWA  = 150;
 
-// ── Mark state ──────────────────────────────────────────────────────────
-const MARK_KEY = 'tackGuide_mark';
-let mark = null;        // { bearing, lat, lon } or null
-try { mark = JSON.parse(localStorage.getItem(MARK_KEY)); } catch(e) {}
+// Geo (match race-core equirectangular short-range)
+const R_EARTH_M = 6371000;
+const M_PER_NM  = 1852;
+const RAD       = Math.PI / 180;
+const DEG       = 180 / Math.PI;
+
+// ── Mark triangulation state (V2) ─────────────────────────────────────────
+const MARK_V2_KEY = 'tackGuide_markObsV2';
+let markV2 = { observations: [], lastValidGuidance: null };
+try {
+  const raw = JSON.parse(localStorage.getItem(MARK_V2_KEY));
+  if (raw && Array.isArray(raw.observations)) {
+    markV2 = {
+      observations: raw.observations,
+      lastValidGuidance: raw.lastValidGuidance || null,
+    };
+  }
+} catch (e) {}
 
 // ── Live data ───────────────────────────────────────────────────────────
 let _live = {};
+let _mqttConnected = false;
 
 // ── Init ────────────────────────────────────────────────────────────────
 const state = RaceCore.loadState();
@@ -937,14 +1072,17 @@ document.addEventListener('DOMContentLoaded', () => {
   RaceCore.loadPolar('first36.json');
 
   applyMarkState();
+  updateDisplay({});
   RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
 
   RaceCore.on('connect', () => {
+    _mqttConnected = true;
     document.getElementById('dot').className = 'dot live';
     document.getElementById('connLbl').textContent = 'LIVE';
   });
 
   RaceCore.on('disconnect', () => {
+    _mqttConnected = false;
     document.getElementById('dot').className = 'dot';
     document.getElementById('connLbl').textContent = 'OFF';
   });
@@ -993,13 +1131,113 @@ function cogDiffRad(a, b) {
   return (((a - b + 540) % 360) - 180) * Math.PI / 180;
 }
 
-// ── VMC-optimal post-tack COG via full polar sweep ──────────────────────
-// Sweeps all TWA values on the post-tack side and finds the one that
-// maximises SOG × cos(COG − markBearing). Returns { cog, twa, vmc, sog }.
-function findVmcOptimalCog(twd, tws, markBearing, isUpwind, onPort) {
-  // Post-tack sign: if currently on port → next tack is starboard (COG = TWD − TWA)
-  //                 if currently on stbd → next tack is port    (COG = TWD + TWA)
-  const sign   = onPort ? -1 : +1;
+function geoDistM(a, b) {
+  const dLat = (b.lat - a.lat) * RAD;
+  const dLon = (b.lon - a.lon) * RAD;
+  const latMid = (a.lat + b.lat) * 0.5 * RAD;
+  const x = dLon * Math.cos(latMid);
+  return Math.sqrt(x * x + dLat * dLat) * R_EARTH_M;
+}
+
+function geoBearingDeg(a, b) {
+  const dLon = (b.lon - a.lon) * RAD;
+  const y = Math.sin(dLon) * Math.cos(b.lat * RAD);
+  const x = Math.cos(a.lat * RAD) * Math.sin(b.lat * RAD) -
+            Math.sin(a.lat * RAD) * Math.cos(b.lat * RAD) * Math.cos(dLon);
+  return (Math.atan2(y, x) * DEG + 360) % 360;
+}
+
+function median(arr) {
+  if (!arr.length) return 0;
+  const a = [...arr].sort((x, y) => x - y);
+  const m = Math.floor(a.length / 2);
+  return a.length % 2 ? a[m] : (a[m - 1] + a[m]) / 2;
+}
+
+/** Perpendicular distance in metres from point (mx,my) to ray at (px,py) direction (ux,uy). */
+function perpDistM(mx, my, l) {
+  const dx = mx - l.px, dy = my - l.py;
+  return Math.abs(-l.uy * dx + l.ux * dy);
+}
+
+/**
+ * Robust least-squares triangulation (IRLS + Huber weights).
+ * Each observation: bearing clockwise from true north at observer position.
+ */
+function solveTriangulationRobust(observations) {
+  const active = observations.filter(o =>
+    o && o.lat != null && o.lon != null && !isNaN(o.lat) && !isNaN(o.lon) &&
+    o.bearing != null && !isNaN(o.bearing));
+  if (active.length < 2) return null;
+
+  const origin = { lat: active[0].lat, lon: active[0].lon };
+  const lines = active.map(b => {
+    const px = (b.lon - origin.lon) * RAD * Math.cos(origin.lat * RAD) * R_EARTH_M;
+    const py = (b.lat - origin.lat) * RAD * R_EARTH_M;
+    const brg = norm(b.bearing) * RAD;
+    return { px, py, ux: Math.sin(brg), uy: Math.cos(brg) };
+  });
+
+  function solveWeighted(weights) {
+    let a00 = 0, a01 = 0, a11 = 0, b0 = 0, b1 = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const w = weights[i];
+      const l = lines[i];
+      const p00 = w * (1 - l.ux * l.ux);
+      const p01 = w * (-l.ux * l.uy);
+      const p11 = w * (1 - l.uy * l.uy);
+      a00 += p00; a01 += p01; a11 += p11;
+      b0 += p00 * l.px + p01 * l.py;
+      b1 += p01 * l.px + p11 * l.py;
+    }
+    const det = a00 * a11 - a01 * a01;
+    if (Math.abs(det) < 1e-10) return null;
+    const x = (b0 * a11 - b1 * a01) / det;
+    const y = (b1 * a00 - b0 * a01) / det;
+    return { x, y };
+  }
+
+  let weights = lines.map(() => 1);
+  let xy = solveWeighted(weights);
+  if (!xy) return null;
+
+  const HUBER_C = 1.345;
+  for (let iter = 0; iter < 8; iter++) {
+    const residuals = lines.map(l => perpDistM(xy.x, xy.y, l));
+    const sigma = Math.max(5, median(residuals.map(Math.abs)) * 1.4826 || 1);
+    weights = residuals.map(r => {
+      const t = Math.abs(r) / (HUBER_C * sigma);
+      return t <= 1 ? 1 : 1 / t;
+    });
+    const nxy = solveWeighted(weights);
+    if (!nxy) break;
+    xy = nxy;
+  }
+
+  const estLat = origin.lat + (xy.y / R_EARTH_M) * DEG;
+  const estLon = origin.lon + (xy.x / (R_EARTH_M * Math.cos(origin.lat * RAD))) * DEG;
+  const finalR = lines.map(l => perpDistM(xy.x, xy.y, l));
+  const rmsM = Math.sqrt(finalR.reduce((s, r) => s + r * r, 0) / finalR.length);
+
+  return {
+    lat: estLat,
+    lon: estLon,
+    rmsErrorNm: rmsM / M_PER_NM,
+  };
+}
+
+function saveMarkV2() {
+  localStorage.setItem(MARK_V2_KEY, JSON.stringify({
+    observations: markV2.observations,
+    lastValidGuidance: markV2.lastValidGuidance,
+  }));
+}
+
+// ── VMC-optimal COG via full polar sweep ────────────────────────────────
+// leg: 'current' = this tack, 'post' = after tack/gybe (opposite tack)
+function findVmcOptimalCog(twd, tws, markBearing, isUpwind, onPort, leg) {
+  const signCurrent = onPort ? -1 : +1;
+  const sign = leg === 'post' ? -signCurrent : signCurrent;
   const twaMin = isUpwind ? 20 : 90;
   const twaMax = isUpwind ? 85 : 170;
 
@@ -1008,8 +1246,8 @@ function findVmcOptimalCog(twd, tws, markBearing, isUpwind, onPort) {
   for (let twa = twaMin; twa <= twaMax; twa++) {
     const sog = RaceCore.interpSpeed(twa, tws);
     if (!sog || sog <= 0) continue;
-    const cog = norm(twd + sign * twa);
-    const vmc = sog * Math.cos(cogDiffRad(cog, markBearing));
+    const cogH = norm(twd + sign * twa);
+    const vmc = sog * Math.cos(cogDiffRad(cogH, markBearing));
     if (vmc > bestVmc) { bestVmc = vmc; bestTwa = twa; bestSog = sog; }
   }
 
@@ -1018,27 +1256,114 @@ function findVmcOptimalCog(twd, tws, markBearing, isUpwind, onPort) {
     cog: norm(twd + sign * bestTwa),
     twa: bestTwa,
     vmc: bestVmc,
-    sog: bestSog
+    sog: bestSog,
   };
+}
+
+function liveEssentialForVmc(live) {
+  return live &&
+    live.cog != null && !isNaN(live.cog) &&
+    live.twd != null && !isNaN(live.twd) &&
+    live.tws != null && !isNaN(live.tws) &&
+    live.twa != null && !isNaN(live.twa) &&
+    live.lat != null && !isNaN(live.lat) &&
+    live.lon != null && !isNaN(live.lon);
+}
+
+function setConnStale(stale) {
+  if (!_mqttConnected) return;
+  const dot = document.getElementById('dot');
+  const lbl = document.getElementById('connLbl');
+  if (stale) {
+    dot.className = 'dot stale';
+    lbl.textContent = 'STALE';
+  } else {
+    dot.className = 'dot live';
+    lbl.textContent = 'LIVE';
+  }
+}
+
+function buildGuidanceUiSnapshot(maneuver, post, current, vmcPost, bearingToMark, distNm, cog, tws) {
+  const optCog = fmtDeg(post.cog);
+  const optDelta = fmtDelta(cog, post.cog);
+  const optSub =
+    post.twa.toFixed(0) + '° TWA · ' + post.sog.toFixed(2) + ' kt · ' +
+    (tws != null ? tws.toFixed(1) : '—') + ' kt TWS';
+  const dCur = fmtDelta(cog, current.cog);
+  const optAdjustVal = dCur + ' to ' + fmtDeg(current.cog) + '°';
+  const vmcVal = (vmcPost.vmc >= 0 ? '+' : '') + vmcPost.vmc.toFixed(1);
+  const vmcMark = '→ mark ' + Math.round(bearingToMark) + '° · ' + distNm.toFixed(2) + ' nm';
+  return {
+    optCog, optDelta, optSub, optAdjustVal,
+    optVmcVal: vmcVal,
+    optVmcMark: vmcMark,
+    optVmcClass: 'opt-vmc-val' + (vmcPost.vmc < 0 ? ' away' : ''),
+    optTrigger: 'BEST VMC AFTER ' + maneuver,
+    optReadiness: '',
+    optReadinessClass: '',
+    showReadiness: false,
+    showTrigger: true,
+    showAdjustRow: true,
+    showVmcRow: true,
+    hideOptHeader: true,
+  };
+}
+
+function applyGuidanceUi(ui) {
+  document.getElementById('optCog').textContent = ui.optCog;
+  document.getElementById('optDelta').textContent = ui.optDelta;
+  document.getElementById('optSub').textContent = ui.optSub;
+  document.getElementById('optAdjustVal').textContent = ui.optAdjustVal;
+  const readiness = document.getElementById('optReadiness');
+  if (ui.showReadiness) {
+    readiness.style.display = '';
+    readiness.textContent = ui.optReadiness;
+    readiness.className = 'opt-readiness' + (ui.optReadinessClass ? ' ' + ui.optReadinessClass : '');
+  } else {
+    readiness.style.display = 'none';
+  }
+  document.getElementById('optTrigger').style.display = ui.showTrigger ? '' : 'none';
+  document.getElementById('optTrigger').textContent = ui.optTrigger;
+  document.getElementById('optAdjustRow').style.display = ui.showAdjustRow ? '' : 'none';
+  const vmcRow = document.getElementById('optVmcRow');
+  vmcRow.style.display = ui.showVmcRow ? '' : 'none';
+  document.getElementById('optVmcVal').textContent = ui.optVmcVal;
+  document.getElementById('optVmcVal').className = ui.optVmcClass;
+  document.getElementById('optVmcMark').textContent = ui.optVmcMark;
+  document.getElementById('optChip').parentElement.style.display = ui.hideOptHeader ? 'none' : '';
+}
+
+function applyFrozenGuidance() {
+  const g = markV2.lastValidGuidance;
+  if (g && g.ui) applyGuidanceUi(g.ui);
 }
 
 // ── Main display update ─────────────────────────────────────────────────
 function updateDisplay(live) {
-  const { cog, twa, twd, tws } = live;
-  const awa = live.awa;
+  const { cog, twa, twd, tws } = live || {};
+  const awa = live && live.awa;
 
   // Live strip
-  document.getElementById('lsCog').textContent = cog != null ? fmtDeg(cog) + '°' : '—';
-  document.getElementById('lsTwd').textContent = twd != null ? fmtDeg(twd) + '°' : '—';
-  document.getElementById('lsTws').textContent = tws != null ? tws.toFixed(1) : '—';
-  document.getElementById('lsAwa').textContent = fmtSignedDeg(awa);
+  document.getElementById('lsCog').textContent = cog != null && !isNaN(cog) ? fmtDeg(cog) + '°' : '—';
+  document.getElementById('lsTwd').textContent = twd != null && !isNaN(twd) ? fmtDeg(twd) + '°' : '—';
+  document.getElementById('lsTws').textContent = tws != null && !isNaN(tws) ? tws.toFixed(1) : '—';
+  document.getElementById('lsAwa').textContent =
+    awa != null && !isNaN(awa) ? fmtSignedDeg(awa) : '—';
 
-  if (twa == null || twd == null) {
+  if (twa == null || twd == null || isNaN(twa) || isNaN(twd)) {
     document.getElementById('lsTwa').textContent = '—';
     document.getElementById('modeBadge').textContent = '—';
     document.getElementById('modeBadge').className = 'mode-badge';
     document.getElementById('tackLabel').textContent = 'waiting for data';
-    clearNumbers();
+    if (markV2.lastValidGuidance && markV2.lastValidGuidance.ui) {
+      applyFrozenGuidance();
+      setConnStale(true);
+    } else {
+      clearNumbers();
+    }
+    const solEarly = solveTriangulationRobust(markV2.observations);
+    const hasTEarly = !!solEarly && markV2.observations.length >= 2;
+    refreshMarkCard(live || {}, solEarly, hasTEarly, liveEssentialForVmc(live));
     return;
   }
 
@@ -1059,55 +1384,51 @@ function updateDisplay(live) {
   const side     = onPort ? 'PORT' : 'STARBOARD';
   document.getElementById('tackLabel').textContent = side + ' ' + maneuver;
 
-  // ── Primary COG: VMC-optimal when mark set, polar-VMG otherwise ──────
   const polar = interpPolar(isUpwind ? POLAR.beat : POLAR.run, tws);
-  let   optCog = null;
-  const hasVmc = mark && tws != null;
+  const markSol = solveTriangulationRobust(markV2.observations);
+  const hasTriangulation = !!markSol && markV2.observations.length >= 2;
+  const fresh = liveEssentialForVmc(live);
 
-  const trigger   = document.getElementById('optTrigger');
-  const optHeader = document.getElementById('optChip').parentElement;
-  const vmcRow    = document.getElementById('optVmcRow');
+  if (hasTriangulation && fresh) {
+    const boat = { lat: live.lat, lon: live.lon };
+    const bearingToMark = geoBearingDeg(boat, { lat: markSol.lat, lon: markSol.lon });
+    const distNm = geoDistM(boat, { lat: markSol.lat, lon: markSol.lon }) / M_PER_NM;
 
-  if (hasVmc) {
-    // Full polar sweep for VMC-optimal post-tack COG
-    const vmc = findVmcOptimalCog(twd, tws, mark.bearing, isUpwind, onPort);
-    if (vmc) {
-      optCog = vmc.cog;
-      trigger.style.display   = '';
-      trigger.textContent      = maneuver + ' WHEN MARK BEARS:';
-      optHeader.style.display  = 'none';
+    const vmcPost = findVmcOptimalCog(twd, tws, bearingToMark, isUpwind, onPort, 'post');
+    const vmcCur  = findVmcOptimalCog(twd, tws, bearingToMark, isUpwind, onPort, 'current');
 
-      document.getElementById('optCog').textContent   = fmtDeg(optCog);
-      document.getElementById('optDelta').textContent = fmtDelta(cog, optCog);
-      document.getElementById('optSub').textContent   =
-        vmc.twa.toFixed(0) + '° TWA · ' + vmc.sog.toFixed(2) + ' kt · ' +
-        (tws ? tws.toFixed(1) : '—') + ' kt TWS';
+    if (vmcPost && vmcCur) {
+      const ui = buildGuidanceUiSnapshot(
+        maneuver, vmcPost, vmcCur, vmcPost, bearingToMark, distNm, cog, tws);
+      markV2.lastValidGuidance = {
+        ui,
+        ts: Date.now(),
+        distNm,
+        bearingToMark,
+        rmsErrorNm: markSol.rmsErrorNm,
+      };
+      saveMarkV2();
+      applyGuidanceUi(ui);
+      setConnStale(false);
 
-      const vmcVal = document.getElementById('optVmcVal');
-      vmcVal.textContent = (vmc.vmc >= 0 ? '+' : '') + vmc.vmc.toFixed(1);
-      vmcVal.className   = 'opt-vmc-val' + (vmc.vmc < 0 ? ' away' : '');
-      document.getElementById('optVmcMark').textContent = '→ mark ' + Math.round(mark.bearing) + '°';
-      vmcRow.style.display = '';
-    }
-  } else {
-    // No mark — show polar-VMG optimal
-    trigger.style.display  = 'none';
-    optHeader.style.display = '';
-    vmcRow.style.display   = 'none';
-    document.getElementById('optManeuver').textContent = 'After ' + maneuver + ':';
-
-    if (polar) {
-      optCog = onPort ? norm(twd - polar.twa) : norm(twd + polar.twa);
-      document.getElementById('optCog').textContent   = fmtDeg(optCog);
-      document.getElementById('optDelta').textContent = fmtDelta(cog, optCog);
-      document.getElementById('optSub').textContent   =
-        polar.twa.toFixed(1) + '° TWA · ' + (tws ? tws.toFixed(1) : '—') + ' kt TWS · ' +
-        polar.sog.toFixed(2) + ' kt polar  (set mark for VMC)';
+      document.getElementById('optManeuver').textContent = 'After ' + maneuver + ':';
+      document.getElementById('optReadiness').style.display = 'none';
+      document.getElementById('optTrigger').style.display = '';
     } else {
-      document.getElementById('optCog').textContent   = '—';
-      document.getElementById('optDelta').textContent = '—';
-      document.getElementById('optSub').textContent   = 'no TWS data — set mark for VMC';
+      showPolarVmGOnly(maneuver, polar, cog, tws, hasTriangulation, onPort);
+      setConnStale(false);
+      showReadinessStrip(markV2.observations.length, hasTriangulation, false, false);
     }
+  } else if (hasTriangulation && !fresh && markV2.lastValidGuidance && markV2.lastValidGuidance.ui) {
+    applyFrozenGuidance();
+    setConnStale(true);
+    showReadinessStrip(markV2.observations.length, hasTriangulation, true, false);
+  } else {
+    showPolarVmGOnly(maneuver, polar, cog, tws, hasTriangulation, onPort);
+    setConnStale(false);
+    const noFreeze = !(markV2.lastValidGuidance && markV2.lastValidGuidance.ui);
+    const awaitingLive = hasTriangulation && !fresh && noFreeze;
+    showReadinessStrip(markV2.observations.length, hasTriangulation, false, awaitingLive);
   }
 
   // ── Fixed range COGs (secondary) ─────────────────────────────────────
@@ -1123,6 +1444,111 @@ function updateDisplay(live) {
   document.getElementById('rngVmg').textContent       = fmtDeg(vmgCog);
   document.getElementById('rngDeltaFast').textContent = fmtDelta(cog, fastCog);
   document.getElementById('rngDeltaVmg').textContent  = fmtDelta(cog, vmgCog);
+
+  refreshMarkCard(live, markSol, hasTriangulation, fresh);
+}
+
+function showReadinessStrip(nObs, hasTriangulation, stale, awaitingLive) {
+  const readiness = document.getElementById('optReadiness');
+  if (nObs < 2) {
+    readiness.style.display = '';
+    readiness.className = 'opt-readiness warn';
+    readiness.textContent =
+      'Add at least 2 bearings from different positions for mark VMC (' + nObs + '/2).';
+    return;
+  }
+  if (!hasTriangulation) {
+    readiness.style.display = '';
+    readiness.className = 'opt-readiness warn';
+    readiness.textContent = 'Bearings are parallel or invalid — move and add another bearing.';
+    return;
+  }
+  if (stale) {
+    readiness.style.display = '';
+    readiness.className = 'opt-readiness stale';
+    readiness.textContent = 'GPS or wind data incomplete — showing last valid VMC (frozen).';
+    return;
+  }
+  if (awaitingLive) {
+    readiness.style.display = '';
+    readiness.className = 'opt-readiness warn';
+    readiness.textContent =
+      'GPS or wind data incomplete — polar VMG only until position and wind are available.';
+    return;
+  }
+  readiness.style.display = 'none';
+}
+
+function showPolarVmGOnly(maneuver, polar, cog, tws, hasTriangulation, onPort) {
+  document.getElementById('optTrigger').style.display = 'none';
+  document.getElementById('optAdjustRow').style.display = 'none';
+  document.getElementById('optVmcRow').style.display = 'none';
+  document.getElementById('optChip').parentElement.style.display = '';
+  document.getElementById('optManeuver').textContent = 'After ' + maneuver + ':';
+
+  const twd = _live.twd;
+  if (polar && twd != null && !isNaN(twd) && cog != null && !isNaN(cog)) {
+    const optCog = onPort ? norm(twd - polar.twa) : norm(twd + polar.twa);
+    document.getElementById('optCog').textContent   = fmtDeg(optCog);
+    document.getElementById('optDelta').textContent = fmtDelta(cog, optCog);
+    document.getElementById('optSub').textContent   =
+      polar.twa.toFixed(1) + '° TWA · ' + (tws != null ? tws.toFixed(1) : '—') + ' kt TWS · ' +
+      polar.sog.toFixed(2) + ' kt polar · add 2+ bearings for mark VMC';
+  } else if (polar && twd != null && !isNaN(twd)) {
+    const optCog = onPort ? norm(twd - polar.twa) : norm(twd + polar.twa);
+    document.getElementById('optCog').textContent   = fmtDeg(optCog);
+    document.getElementById('optDelta').textContent = '—';
+    document.getElementById('optSub').textContent   =
+      polar.twa.toFixed(1) + '° TWA · ' + (tws != null ? tws.toFixed(1) : '—') + ' kt TWS · ' +
+      polar.sog.toFixed(2) + ' kt polar · add 2+ bearings for mark VMC';
+  } else {
+    document.getElementById('optCog').textContent   = '—';
+    document.getElementById('optDelta').textContent = '—';
+    document.getElementById('optSub').textContent   = 'no TWS data — add bearings for mark VMC';
+  }
+}
+
+function refreshMarkCard(live, markSol, hasTriangulation, fresh) {
+  const brgEl = document.getElementById('markActiveBrg');
+  const posEl = document.getElementById('markActivePos');
+  const metaEl = document.getElementById('markMeta');
+  if (markV2.observations.length === 0) return;
+
+  if (hasTriangulation && markSol) {
+    brgEl.textContent = '—';
+    posEl.textContent =
+      markSol.lat.toFixed(5) + '°, ' + markSol.lon.toFixed(5) + '°';
+    let metaHtml = '';
+    if (fresh && live && live.lat != null && live.lon != null) {
+      const distNm = geoDistM(
+        { lat: live.lat, lon: live.lon },
+        { lat: markSol.lat, lon: markSol.lon }) / M_PER_NM;
+      const brg = geoBearingDeg({ lat: live.lat, lon: live.lon }, { lat: markSol.lat, lon: markSol.lon });
+      brgEl.textContent = Math.round(brg) + '°';
+      metaHtml =
+        '<span>DIST</span> ' + distNm.toFixed(2) + ' nm' +
+        ' · <span class="err">±</span> ' + markSol.rmsErrorNm.toFixed(3) + ' nm';
+    } else if (markV2.lastValidGuidance) {
+      const g = markV2.lastValidGuidance;
+      if (g.bearingToMark != null && !isNaN(g.bearingToMark)) {
+        brgEl.textContent = Math.round(g.bearingToMark) + '°';
+      }
+      const dnm = g.distNm != null && !isNaN(g.distNm) ? g.distNm.toFixed(2) : '—';
+      metaHtml =
+        '<span>DIST</span> ' + dnm + ' nm (frozen)' +
+        ' · <span class="err">±</span> ' + markSol.rmsErrorNm.toFixed(3) + ' nm';
+    } else {
+      metaHtml =
+        '<span>±</span> ' + markSol.rmsErrorNm.toFixed(3) + ' nm (need GPS for dist/bearing)';
+    }
+    metaEl.innerHTML = metaHtml;
+  } else {
+    brgEl.textContent = '—';
+    posEl.textContent =
+      markV2.observations.length + ' bearing(s) — need 2+ for fix';
+    metaEl.innerHTML =
+      '<span>STATUS</span> waiting for more bearings';
+  }
 }
 
 function clearNumbers() {
@@ -1131,23 +1557,27 @@ function clearNumbers() {
     const el = document.getElementById(id);
     if (el) el.textContent = '—';
   });
+  const adj = document.getElementById('optAdjustVal');
+  if (adj) adj.textContent = '—';
   document.getElementById('optVmcRow').style.display  = 'none';
   document.getElementById('optTrigger').style.display = 'none';
+  document.getElementById('optAdjustRow').style.display = 'none';
+  document.getElementById('optReadiness').style.display = 'none';
   document.getElementById('optChip').parentElement.style.display = '';
 }
 
 // ── Mark modal ───────────────────────────────────────────────────────────
 function openMarkModal() {
   const input = document.getElementById('modalBrgInput');
-  // Pre-fill with existing mark bearing or blank
-  input.value = mark ? Math.round(mark.bearing) : '';
+  input.value = '';
+  document.getElementById('modalError').textContent = '';
   document.getElementById('markModal').classList.remove('hidden');
-  // Small delay so modal renders before focusing (avoids keyboard quirks)
   setTimeout(() => input.focus(), 80);
 }
 
 function closeMarkModal() {
   document.getElementById('markModal').classList.add('hidden');
+  document.getElementById('modalError').textContent = '';
 }
 
 function nudge(delta) {
@@ -1158,6 +1588,8 @@ function nudge(delta) {
 }
 
 function confirmSetMark() {
+  const errEl = document.getElementById('modalError');
+  errEl.textContent = '';
   const input = document.getElementById('modalBrgInput');
   const brg   = parseInt(input.value, 10);
   if (isNaN(brg)) {
@@ -1165,37 +1597,66 @@ function confirmSetMark() {
     setTimeout(() => input.style.color = '', 800);
     return;
   }
-  mark = {
+  if (_live.lat == null || _live.lon == null || isNaN(_live.lat) || isNaN(_live.lon)) {
+    errEl.textContent = 'GPS position required — wait for fix, then add bearing.';
+    return;
+  }
+  markV2.observations.push({
+    id: Date.now().toString(36) + Math.random().toString(36).slice(2, 8),
     bearing: ((brg % 360) + 360) % 360,
-    lat: _live.lat ?? null,
-    lon: _live.lon ?? null
-  };
-  localStorage.setItem(MARK_KEY, JSON.stringify(mark));
+    lat: _live.lat,
+    lon: _live.lon,
+    ts: Date.now(),
+  });
+  saveMarkV2();
   applyMarkState();
   closeMarkModal();
+  updateDisplay(_live);
+}
+
+function deleteObservation(id) {
+  markV2.observations = markV2.observations.filter(o => o.id !== id);
+  if (markV2.observations.length < 2) markV2.lastValidGuidance = null;
+  saveMarkV2();
+  applyMarkState();
+  updateDisplay(_live);
 }
 
 function clearMark() {
-  mark = null;
-  localStorage.removeItem(MARK_KEY);
+  markV2 = { observations: [], lastValidGuidance: null };
+  localStorage.removeItem(MARK_V2_KEY);
   applyMarkState();
+  updateDisplay(_live);
 }
 
 function applyMarkState() {
   const setBtn  = document.getElementById('markSetBtn');
   const active  = document.getElementById('markActive');
-  if (mark) {
+  const listEl = document.getElementById('obsList');
+  if (markV2.observations.length > 0) {
     setBtn.style.display  = 'none';
     active.style.display  = '';
-    document.getElementById('markActiveBrg').textContent =
-      Math.round(mark.bearing) + '°';
-    document.getElementById('markActivePos').textContent =
-      (mark.lat != null && mark.lon != null)
-        ? 'set at ' + mark.lat.toFixed(3) + '°N ' + mark.lon.toFixed(3) + '°E'
-        : '';
+    listEl.innerHTML = markV2.observations
+      .slice()
+      .sort((a, b) => b.ts - a.ts)
+      .map(o => {
+        const brg = Math.round(o.bearing);
+        const pos = o.lat != null && o.lon != null
+          ? o.lat.toFixed(4) + '°, ' + o.lon.toFixed(4) + '°'
+          : '—';
+        return '<div class="obs-item">' +
+          '<span class="obs-item-brg">' + brg + '°</span>' +
+          '<span class="obs-item-pos">' + pos + '</span>' +
+          '<button type="button" class="obs-del" data-id="' + o.id + '">Del</button>' +
+          '</div>';
+      }).join('');
+    listEl.querySelectorAll('.obs-del').forEach(btn => {
+      btn.onclick = () => deleteObservation(btn.getAttribute('data-id'));
+    });
   } else {
     setBtn.style.display  = '';
     active.style.display  = 'none';
+    listEl.innerHTML = '';
   }
 }
 
