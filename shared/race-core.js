@@ -887,7 +887,9 @@ function mqttConnect(host, port) {
     try { _mqttClient.end(true); } catch (e) {}
   }
 
-  const url = `ws://${host}:${port}`;
+  // Use wss:// on HTTPS pages for Safari compatibility
+  const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+  const url = `${protocol}${host}:${port}`;
   console.log('[RaceCore] Connecting to MQTT:', url);
 
   _mqttClient = mqtt.connect(url, {
@@ -1006,7 +1008,9 @@ function isMqttConnected() { return _mqttConnected; }
 
 function testConnection(host, port) {
   return new Promise((resolve) => {
-    const testUrl = `ws://${host}:${port}`;
+    // Use wss:// on HTTPS pages for Safari compatibility
+    const protocol = window.location.protocol === 'https:' ? 'wss://' : 'ws://';
+    const testUrl = `${protocol}${host}:${port}`;
     console.log('[RaceCore] Testing connection to:', testUrl);
 
     const testClient = mqtt.connect(testUrl, {

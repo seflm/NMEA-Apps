@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="format-detection" content="telephone=no">
 <title>Sailing Data</title>
 <link rel="stylesheet" href="shared/race-theme.css">
 <style>
@@ -103,24 +106,24 @@ main {
 }
 
 .card-label {
-  font-size: 0.7rem;
+  font-size: 1rem;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
 .big-value {
-  font-size: 3.5rem;
+  font-size: 5.5rem;
   font-weight: bold;
   color: var(--accent);
-  line-height: 1;
-  margin-bottom: 4px;
+  line-height: 0.9;
+  margin-bottom: 2px;
   font-variant-numeric: tabular-nums;
 }
 
 .big-unit {
-  font-size: 0.8rem;
+  font-size: 1rem;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -128,7 +131,8 @@ main {
 
 /* Special styling for percentage */
 .percentage-value {
-  font-size: 4rem;
+  font-size: 6rem;
+  line-height: 0.85;
 }
 
 .percentage-value.high {
@@ -174,19 +178,19 @@ main {
   }
   
   .big-value {
-    font-size: 2.2rem;
+    font-size: 3.8rem;
   }
   
   .percentage-value {
-    font-size: 2.5rem;
+    font-size: 4.2rem;
   }
   
   .card-label {
-    font-size: 0.6rem;
+    font-size: 0.9rem;
   }
   
   .big-unit {
-    font-size: 0.65rem;
+    font-size: 0.9rem;
   }
 }
 
@@ -205,19 +209,19 @@ main {
   }
   
   .big-value {
-    font-size: 1.8rem;
+    font-size: 3.2rem;
   }
   
   .percentage-value {
-    font-size: 2rem;
+    font-size: 3.6rem;
   }
   
   .card-label {
-    font-size: 0.55rem;
+    font-size: 0.8rem;
   }
   
   .big-unit {
-    font-size: 0.6rem;
+    font-size: 0.8rem;
   }
 }
 
@@ -293,7 +297,7 @@ main {
 </main>
 
 <!-- Scripts -->
-<script src="https://unpkg.com/mqtt@5/dist/mqtt.min.js"></script>
+<script src="shared/mqtt.min.js"></script>
 <script src="shared/race-core.js"></script>
 <script>
 'use strict';
@@ -304,16 +308,32 @@ let lastUpdate = 0;
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+  // Safari debugging
+  console.log('[Simple] User Agent:', navigator.userAgent);
+  console.log('[Simple] Protocol:', window.location.protocol);
+  console.log('[Simple] Starting MQTT connection to:', state.mqtt.host, state.mqtt.port);
+  
   RaceCore.mqttConnect(state.mqtt.host, state.mqtt.port);
   
   RaceCore.on('connect', () => {
+    console.log('[Simple] MQTT connected successfully');
     document.getElementById('connectionStatus').textContent = 'Connected';
     document.getElementById('statusDot').className = 'status-dot connected';
   });
   
   RaceCore.on('disconnect', () => {
+    console.log('[Simple] MQTT disconnected');
     document.getElementById('connectionStatus').textContent = 'Disconnected';
     document.getElementById('statusDot').className = 'status-dot';
+  });
+  
+  // Safari-specific error handling
+  window.addEventListener('error', (e) => {
+    console.error('[Simple] JavaScript error:', e.error);
+  });
+  
+  window.addEventListener('unhandledrejection', (e) => {
+    console.error('[Simple] Unhandled promise rejection:', e.reason);
   });
   
   RaceCore.on('data', ({ live: l }) => {

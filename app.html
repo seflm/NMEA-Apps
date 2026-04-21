@@ -173,6 +173,17 @@ body.data-stale .kv .v { opacity: 0.5; }
   align-items: center;
 }
 
+/* ── Target selector (race tab) ─────────────────────────────── */
+.target-sel-item {
+  background: #091520; border: 1px solid var(--border); border-radius: 6px;
+  padding: 6px 10px; cursor: pointer; display: flex; align-items: center; gap: 6px;
+  font-size: 0.8rem; color: var(--text);
+}
+.target-sel-item:hover { border-color: var(--accent2); }
+.target-sel-item.auto-current { border-color: var(--good); color: var(--good); }
+.target-sel-item.manual-target { border-color: var(--accent); color: var(--accent); background: #0a1f30; }
+.target-sel-item .ts-num { font-size: 0.62rem; color: var(--muted); min-width: 18px; }
+
 /* ── Mobile ──────────────────────────────────────────────────── */
 @media (max-width: 700px) {
   #plan-page, #race-page { flex-direction: column; }
@@ -216,12 +227,12 @@ body.data-stale .kv .v { opacity: 0.5; }
       <!-- FIELD sub-panel -->
       <div id="sub-field">
 
-        <!-- Start line info -->
+        <!-- Lines info -->
         <div class="card" id="lineInfo">
-          <div class="card-title">Start Line</div>
-          <div class="kv"><span class="k">Length</span><span class="v hi" id="lineLen">—</span></div>
-          <div class="kv"><span class="k">Bearing</span><span class="v" id="lineBrg">—</span></div>
-          <div class="kv"><span class="k">Favored end</span><span class="v" id="lineFav">—</span></div>
+          <div class="card-title">Lines</div>
+          <div id="lineInfoList">
+            <div style="color:var(--muted);font-size:0.75rem">No lines placed yet</div>
+          </div>
         </div>
 
         <!-- Mark list -->
@@ -231,11 +242,9 @@ body.data-stale .kv .v { opacity: 0.5; }
             <button class="btn small primary" onclick="toggleAddMark()">+ ADD</button>
           </div>
           <div class="inline-add-list" id="addMarkList" hidden>
-            <button onclick="uiAddMark('Start Pin','start-pin','any')">Start Pin</button>
-            <button onclick="uiAddMark('Start RC','start-rc','any')">Start RC</button>
-            <button onclick="uiAddMark('Mark','mark','port')">Mark</button>
-            <button onclick="uiAddMark('Finish Pin','finish-pin','any')">Finish Pin</button>
-            <button onclick="uiAddMark('Finish RC','finish-rc','any')">Finish RC</button>
+            <button onclick="uiAddMark('Line','line','any')">↔ Line</button>
+            <button onclick="uiAddMark('Mark','mark','port')">▲ Mark</button>
+            <button onclick="uiAddWaypoint()">⊕ Waypoint</button>
           </div>
           <div class="mark-list" id="markList">
             <div style="color:var(--muted);font-size:0.75rem;text-align:center;padding:12px 0">
@@ -251,33 +260,26 @@ body.data-stale .kv .v { opacity: 0.5; }
           <input class="input" id="detName" placeholder="Mark name" oninput="updateMarkDetail('name',this.value)">
           <label>Kind</label>
           <select class="input" id="detKind" onchange="updateMarkDetail('kind',this.value)">
-            <option value="start-pin">Start Pin</option>
-            <option value="start-rc">Start RC (Race Committee)</option>
+            <option value="line">Line</option>
             <option value="mark">Mark</option>
-            <option value="finish-pin">Finish Pin</option>
-            <option value="finish-rc">Finish RC</option>
+            <option value="waypoint">Waypoint</option>
           </select>
-          <label>Rounding side</label>
-          <select class="input" id="detRounding" onchange="updateMarkDetail('rounding',this.value)">
-            <option value="port">Leave to port</option>
-            <option value="stbd">Leave to starboard</option>
-            <option value="any">Any / line</option>
-          </select>
+          <div id="detRoundingRow">
+            <label>Rounding side</label>
+            <select class="input" id="detRounding" onchange="updateMarkDetail('rounding',this.value)">
+              <option value="port">Leave to port</option>
+              <option value="stbd">Leave to starboard</option>
+              <option value="any">Any / line</option>
+            </select>
+          </div>
           <label>Distance hint (nm)</label>
           <input class="input" type="number" id="detDist" step="0.05" placeholder="e.g. 0.5"
                  oninput="updateMarkDetail('distance_hint_nm',parseFloat(this.value)||null)">
-          <div class="kv" style="margin-top:4px">
-            <span class="k">Position</span>
-            <span class="v hi" id="detPos">not set</span>
-          </div>
-          <div style="display:flex;gap:6px">
-            <button class="btn small primary" style="flex:1" onclick="pingMark()">PING GPS</button>
-            <button class="btn small" style="flex:1" onclick="tapMapMark()">TAP MAP</button>
-            <button class="btn small" style="flex:1" onclick="clearMarkPos()">CLEAR</button>
-          </div>
-          <div class="card-title" style="margin-top:4px">Bearings (triangulation)</div>
+          <!-- Position section: replaced by renderMarkDetail() for line vs mark/waypoint -->
+          <div id="detPosSection"></div>
+          <div class="card-title" style="margin-top:4px" id="detBearingsTitle">Bearings (triangulation)</div>
           <div class="bearing-list" id="bearingList"></div>
-          <button class="btn small" onclick="addManualBearing()">+ MANUAL BEARING</button>
+          <button class="btn small" id="detBearingBtn" onclick="addManualBearing()">+ MANUAL BEARING</button>
         </div>
 
         <!-- Clear all -->
@@ -356,6 +358,15 @@ body.data-stale .kv .v { opacity: 0.5; }
         <div class="live-cell"><div class="lbl">SOG</div><div><span class="val" id="liveSog">—</span><span class="unit">kt</span></div></div>
         <div class="live-cell"><div class="lbl">COG</div><div><span class="val" id="liveCog">—</span><span class="unit">°</span></div></div>
         <div class="live-cell"><div class="lbl">HDG</div><div><span class="val" id="liveHdg">—</span><span class="unit">°</span></div></div>
+      </div>
+
+      <!-- Manual target override -->
+      <div class="card" id="targetOverrideCard">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>TARGET</span>
+          <button class="btn small" onclick="clearTargetOverride()">AUTO</button>
+        </div>
+        <div class="leg-list" id="targetSelectorList" style="gap:3px"></div>
       </div>
 
       <div class="eta-card card">
@@ -550,6 +561,7 @@ let   selectedMarkId = null;
 
 let planPlotter = null;
 let racePlotter = null;
+let _editingLineEndpoint = null; // null | 0 | 1 — which endpoint of a line mark is being edited
 
 // ═══════════════════════════════════════════════════════════════
 // INIT
@@ -644,6 +656,17 @@ function showSub(name) {
   el('sub-route').hidden = name !== 'route';
   el('stField').classList.toggle('active', name === 'field');
   el('stRoute').classList.toggle('active', name === 'route');
+  if (name === 'route') {
+    planPlotter && planPlotter.setAmbientWaypointMode(true, (ll) => {
+      const wp = RaceCore.addWaypoint(ll.lat, ll.lon);
+      RaceCore.addLeg(wp.id, wp.name);
+      renderLegList();
+      renderMarkList();
+      planRedraw();
+    });
+  } else {
+    planPlotter && planPlotter.setAmbientWaypointMode(false, null);
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -656,6 +679,26 @@ function toggleAddMark() {
 
 function uiAddMark(name, kind, rounding) {
   el('addMarkList').hidden = true;
+  if (kind === 'line') {
+    const mark = RaceCore.addMark({ name, kind, rounding });
+    selectMark(mark.id);
+    renderMarkList();
+    el('planMsg').textContent = `Tap chart to place "${name}" — Endpoint A`;
+    planPlotter.startPick(ll => {
+      const pts = [{ lat: ll.lat, lon: ll.lon }, { lat: null, lon: null }];
+      RaceCore.updateMark(selectedMarkId, { points: pts });
+      renderMarkList(); renderMarkDetail(); planRedraw();
+      el('planMsg').textContent = `Tap chart to place "${name}" — Endpoint B`;
+      planPlotter.startPick(ll2 => {
+        const m = state.field.marks.find(x => x.id === selectedMarkId);
+        const newPts = [m.points[0], { lat: ll2.lat, lon: ll2.lon }];
+        RaceCore.updateMark(selectedMarkId, { points: newPts });
+        el('planMsg').textContent = 'Tap chart to place selected mark';
+        renderMarkList(); renderMarkDetail(); planRedraw(); updateLineInfo();
+      });
+    });
+    return;
+  }
   const mark = RaceCore.addMark({ name, kind, rounding });
   selectMark(mark.id);
   renderMarkList();
@@ -666,6 +709,19 @@ function uiAddMark(name, kind, rounding) {
     renderMarkList();
     renderMarkDetail();
     planRedraw();
+  });
+}
+
+function uiAddWaypoint() {
+  el('addMarkList').hidden = true;
+  const wp = RaceCore.addWaypoint(null, null);
+  selectMark(wp.id);
+  renderMarkList();
+  el('planMsg').textContent = `Tap chart to place "${wp.name}"`;
+  planPlotter.startPick(ll => {
+    RaceCore.updateMark(selectedMarkId, { lat: ll.lat, lon: ll.lon });
+    el('planMsg').textContent = 'Tap chart to place selected mark';
+    renderMarkList(); renderMarkDetail(); planRedraw();
   });
 }
 
@@ -690,14 +746,24 @@ function renderMarkList() {
     return;
   }
   list.innerHTML = marks.map(m => {
-    const conf = m.confidence_m != null ? ` ±${Math.round(m.confidence_m)}m` : '';
-    const pos  = m.lat != null ? `${m.lat.toFixed(5)}, ${m.lon.toFixed(5)}${conf}` : 'not set';
-    const cls  = m.id === selectedMarkId ? ' active' : '';
+    let posText;
+    if (m.kind === 'line') {
+      const a = m.points && m.points[0];
+      const b = m.points && m.points[1];
+      const aStr = (a && a.lat != null) ? `A:${a.lat.toFixed(4)},${a.lon.toFixed(4)}` : 'A:—';
+      const bStr = (b && b.lat != null) ? `B:${b.lat.toFixed(4)},${b.lon.toFixed(4)}` : 'B:—';
+      posText = `${aStr}  ${bStr}`;
+    } else {
+      const conf = m.confidence_m != null ? ` ±${Math.round(m.confidence_m)}m` : '';
+      posText = m.lat != null ? `${m.lat.toFixed(5)}, ${m.lon.toFixed(5)}${conf}` : 'not set';
+    }
+    const cls = m.id === selectedMarkId ? ' active' : '';
+    const kindLabel = m.kind === 'line' ? '↔ line' : m.kind === 'waypoint' ? `⊕ ${m.kind}` : `▲ ${m.kind} · ${m.rounding || 'any'}`;
     return `<div class="mark-item${cls}" onclick="selectMark(${m.id})">
       <button class="mark-del" onclick="event.stopPropagation();deleteMark(${m.id})">&#x2715;</button>
       <div class="mark-name">${m.name || m.kind}</div>
-      <div class="mark-kind">${m.kind} · ${m.rounding || 'any'}</div>
-      <div class="mark-pos">${pos}</div>
+      <div class="mark-kind">${kindLabel}</div>
+      <div class="mark-pos">${posText}</div>
     </div>`;
   }).join('');
 }
@@ -708,13 +774,53 @@ function renderMarkDetail() {
   const m = state.field.marks.find(x => x.id === selectedMarkId);
   if (!m) { panel.classList.remove('visible'); return; }
   panel.classList.add('visible');
-  el('detName').value     = m.name || '';
-  el('detKind').value     = m.kind || 'mark';
-  el('detRounding').value = m.rounding || 'any';
-  el('detDist').value     = m.distance_hint_nm != null ? m.distance_hint_nm : '';
-  el('detPos').textContent = m.lat != null ? `${m.lat.toFixed(5)}, ${m.lon.toFixed(5)}` : 'not set';
+  el('detName').value = m.name || '';
+  el('detKind').value = m.kind || 'mark';
+  el('detDist').value = m.distance_hint_nm != null ? m.distance_hint_nm : '';
 
+  const isLine = m.kind === 'line';
+  el('detRoundingRow').hidden = isLine;
+  if (!isLine) el('detRounding').value = m.rounding || 'any';
+
+  // Build position section
+  const posSection = el('detPosSection');
+  if (isLine) {
+    const a = m.points && m.points[0];
+    const b = m.points && m.points[1];
+    const aStr = (a && a.lat != null) ? `${a.lat.toFixed(5)}, ${a.lon.toFixed(5)}` : 'not set';
+    const bStr = (b && b.lat != null) ? `${b.lat.toFixed(5)}, ${b.lon.toFixed(5)}` : 'not set';
+    posSection.innerHTML = `
+      <div class="kv" style="margin-top:4px"><span class="k">Endpoint A</span><span class="v hi">${aStr}</span></div>
+      <div style="display:flex;gap:6px;margin-bottom:6px">
+        <button class="btn small primary" style="flex:1" onclick="pingLinePt(0)">PING A</button>
+        <button class="btn small" style="flex:1" onclick="tapLinePt(0)">TAP A</button>
+        <button class="btn small" style="flex:1" onclick="clearLinePt(0)">CLR A</button>
+      </div>
+      <div class="kv"><span class="k">Endpoint B</span><span class="v hi">${bStr}</span></div>
+      <div style="display:flex;gap:6px">
+        <button class="btn small primary" style="flex:1" onclick="pingLinePt(1)">PING B</button>
+        <button class="btn small" style="flex:1" onclick="tapLinePt(1)">TAP B</button>
+        <button class="btn small" style="flex:1" onclick="clearLinePt(1)">CLR B</button>
+      </div>`;
+  } else {
+    const posStr = m.lat != null ? `${m.lat.toFixed(5)}, ${m.lon.toFixed(5)}` : 'not set';
+    posSection.innerHTML = `
+      <div class="kv" style="margin-top:4px">
+        <span class="k">Position</span>
+        <span class="v hi">${posStr}</span>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn small primary" style="flex:1" onclick="pingMark()">PING GPS</button>
+        <button class="btn small" style="flex:1" onclick="tapMapMark()">TAP MAP</button>
+        <button class="btn small" style="flex:1" onclick="clearMarkPos()">CLEAR</button>
+      </div>`;
+  }
+
+  // Bearings section — only for non-line marks
+  el('detBearingsTitle').hidden = isLine;
+  el('detBearingBtn').hidden    = isLine;
   const bl = el('bearingList');
+  if (isLine) { bl.innerHTML = ''; return; }
   const bearings = m.bearings || [];
   if (bearings.length === 0) {
     bl.innerHTML = '<div style="color:var(--muted);font-size:0.7rem">No bearings yet</div>';
@@ -761,6 +867,43 @@ function clearMarkPos() {
   renderMarkList(); renderMarkDetail(); planRedraw();
 }
 
+function pingLinePt(ptIdx) {
+  if (selectedMarkId == null) return;
+  if (live.lat == null) { alert('No GPS fix yet.'); return; }
+  const m = state.field.marks.find(x => x.id === selectedMarkId);
+  if (!m || m.kind !== 'line') return;
+  const pts = [...(m.points || [{lat:null,lon:null},{lat:null,lon:null}])];
+  pts[ptIdx] = { lat: live.lat, lon: live.lon };
+  RaceCore.updateMark(selectedMarkId, { points: pts });
+  renderMarkList(); renderMarkDetail(); planRedraw(); updateLineInfo();
+}
+
+function tapLinePt(ptIdx) {
+  if (selectedMarkId == null) return;
+  const m = state.field.marks.find(x => x.id === selectedMarkId);
+  const label = ptIdx === 0 ? 'Endpoint A' : 'Endpoint B';
+  el('planMsg').textContent = `Tap chart to place "${m && m.name || 'line'}" — ${label}`;
+  planPlotter.startPick(ll => {
+    const mark = state.field.marks.find(x => x.id === selectedMarkId);
+    if (!mark) return;
+    const pts = [...(mark.points || [{lat:null,lon:null},{lat:null,lon:null}])];
+    pts[ptIdx] = { lat: ll.lat, lon: ll.lon };
+    RaceCore.updateMark(selectedMarkId, { points: pts });
+    el('planMsg').textContent = 'Tap chart to place selected mark';
+    renderMarkList(); renderMarkDetail(); planRedraw(); updateLineInfo();
+  });
+}
+
+function clearLinePt(ptIdx) {
+  if (selectedMarkId == null) return;
+  const m = state.field.marks.find(x => x.id === selectedMarkId);
+  if (!m || m.kind !== 'line') return;
+  const pts = [...(m.points || [{lat:null,lon:null},{lat:null,lon:null}])];
+  pts[ptIdx] = { lat: null, lon: null };
+  RaceCore.updateMark(selectedMarkId, { points: pts });
+  renderMarkList(); renderMarkDetail(); planRedraw(); updateLineInfo();
+}
+
 function togglePlanBearing(idx) {
   if (selectedMarkId == null) return;
   const m = state.field.marks.find(x => x.id === selectedMarkId);
@@ -787,24 +930,33 @@ function clearAll() {
 }
 
 // ═══════════════════════════════════════════════════════════════
-// PLAN — START LINE INFO
+// PLAN — LINES INFO
 // ═══════════════════════════════════════════════════════════════
 function updateLineInfo() {
-  const info = RaceCore.startLineInfo();
-  if (!info) {
-    el('lineLen').textContent = '—';
-    el('lineBrg').textContent = '—';
-    el('lineFav').textContent = '—';
+  const lines = state.field.marks.filter(m => m.kind === 'line');
+  const container = el('lineInfoList');
+  if (!container) return;
+  if (lines.length === 0) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.75rem">No lines placed yet</div>';
     return;
   }
-  el('lineLen').textContent = `${Math.round(info.length_m)} m`;
-  el('lineBrg').textContent = `${Math.round(info.bearing)}° / ${Math.round((info.bearing + 180) % 360)}°`;
-  if (live.twd != null && info.pin && info.rc) {
-    const dot = Math.cos(RaceCore.angleDiff(live.twd, info.bearing) * RaceCore.RAD);
-    el('lineFav').textContent = Math.abs(dot) < 0.1 ? 'Square' : (dot > 0 ? (info.rc.name || 'RC') : (info.pin.name || 'Pin'));
-  } else {
-    el('lineFav').textContent = '—';
-  }
+  container.innerHTML = lines.map(m => {
+    const info = RaceCore.lineInfo(m.id);
+    const lenStr = info ? `${Math.round(info.lengthM)} m` : '—';
+    const brgStr = info ? `${Math.round(info.bearing)}° / ${Math.round((info.bearing + 180) % 360)}°` : '—';
+    let favStr = '—';
+    if (info && live.twd != null) {
+      const dot = Math.cos(RaceCore.angleDiff(live.twd, info.bearing) * RaceCore.RAD);
+      favStr = Math.abs(dot) < 0.1 ? 'Square'
+             : dot > 0 ? 'B end' : 'A end';
+    }
+    return `<div style="margin-bottom:6px;padding-bottom:6px;border-bottom:1px solid var(--border)">
+      <div style="font-size:0.75rem;color:var(--accent);margin-bottom:2px">${m.name || 'Line'}</div>
+      <div class="kv"><span class="k">Length</span><span class="v hi">${lenStr}</span></div>
+      <div class="kv"><span class="k">Bearing</span><span class="v">${brgStr}</span></div>
+      <div class="kv"><span class="k">Favored end</span><span class="v">${favStr}</span></div>
+    </div>`;
+  }).join('');
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -826,7 +978,10 @@ function onLapsChange() {
 function openAddLeg() {
   const sel = el('legMarkSel');
   sel.innerHTML = '<option value="">— pick a mark —</option>' +
-    state.field.marks.map(m => `<option value="${m.id}">${m.name || m.kind}</option>`).join('');
+    state.field.marks.map(m => {
+      const prefix = m.kind === 'line' ? '↔ ' : m.kind === 'waypoint' ? '⊕ ' : '▲ ';
+      return `<option value="${m.id}">${prefix}${m.name || m.kind}</option>`;
+    }).join('');
   sel.style.display = '';
   el('legMarkConfirm').style.display = '';
 }
@@ -836,7 +991,8 @@ function confirmAddLeg() {
   const markId = parseInt(sel.value);
   if (!markId) return;
   const m = state.field.marks.find(x => x.id === markId);
-  RaceCore.addLeg(markId, m ? (m.name || m.kind) : String(markId));
+  const targetType = m && m.kind === 'line' ? 'line' : 'mark';
+  RaceCore.addLeg(markId, m ? (m.name || m.kind) : String(markId), targetType);
   sel.style.display = 'none';
   el('legMarkConfirm').style.display = 'none';
   renderLegList();
@@ -851,7 +1007,9 @@ function renderLegList() {
   }
   list.innerHTML = legs.map((leg, i) => {
     const m = state.field.marks.find(x => x.id === leg.mark_id);
-    const label = m ? (m.name || m.kind) : `Mark #${leg.mark_id}`;
+    const rawLabel = m ? (m.name || m.kind) : `Mark #${leg.mark_id}`;
+    const prefix = leg.target_type === 'line' ? '↔ ' : '';
+    const label = prefix + rawLabel;
     return `<div class="leg-item">
       <span class="leg-num">${i + 1}.</span>
       <span class="leg-name">${label}</span>
@@ -914,7 +1072,49 @@ function raceTick() {
   updateEta(route);
   updateProgress();
   updateRaceTrack();
+  renderTargetSelector();
   racePlotter.draw(live, state, route);
+}
+
+function renderTargetSelector() {
+  const { course, progress } = state;
+  const seq = course.sequence || [];
+  const list = el('targetSelectorList');
+  if (!list) return;
+  if (seq.length === 0) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:0.72rem;padding:4px 0">No course loaded</div>';
+    return;
+  }
+  const autoIdx   = progress.current_leg_idx || 0;
+  const manualIdx = progress.manual_leg_idx;
+  // Deduplicate for display: show unique leg entries (not every lap repetition)
+  const legs = course.legs || [];
+  list.innerHTML = seq.map((legId, seqIdx) => {
+    const leg = legs.find(l => l.id === legId);
+    if (!leg) return '';
+    const m = state.field.marks.find(mk => mk.id === leg.mark_id);
+    const name = m ? (m.name || m.kind) : leg.name;
+    const prefix = leg.target_type === 'line' ? '↔' : '▲';
+    const isAuto   = seqIdx === autoIdx && manualIdx == null;
+    const isManual = seqIdx === (manualIdx ?? -1);
+    let cls = 'target-sel-item';
+    if (isManual) cls += ' manual-target';
+    else if (isAuto) cls += ' auto-current';
+    return `<div class="${cls}" onclick="selectTargetLeg(${seqIdx})">
+      <span class="ts-num">${seqIdx + 1}</span>
+      <span>${prefix} ${name}</span>
+    </div>`;
+  }).join('');
+}
+
+function selectTargetLeg(seqIdx) {
+  RaceCore.setManualLegIdx(seqIdx);
+  raceTick();
+}
+
+function clearTargetOverride() {
+  RaceCore.setManualLegIdx(null);
+  raceTick();
 }
 
 function updateLiveStrip() {
@@ -938,7 +1138,7 @@ function calculateRoute() {
     status: null, legClass: '', portBrg: null, stbdBrg: null,
     portDist: null, stbdDist: null, favored: null,
     distToMark: null, brgToMark: null, vmgNow: null, vmgOpt: null,
-    etaSec: null, leg,
+    etaSec: null, leg, projectedPath: null,
   };
 
   if (!polar || !target || target.lat == null || live.twd == null || live.tws == null || live.lat == null) {
@@ -1005,6 +1205,12 @@ function calculateRoute() {
     const perpSpd    = Math.abs(live.sog * Math.sin(cogDelta * RaceCore.RAD));
     if (perpSpd > 0.05) out.etaSec = (nearDist / RaceCore.M_PER_NM) / perpSpd * 3600;
   }
+
+  // Projected path (replaces infinite laylines on chart)
+  out.projectedPath = RaceCore.calcProjectedPath(
+    live.lat, live.lon, target.lat, target.lon,
+    out.portBrg, out.stbdBrg, live.twa
+  );
 
   return out;
 }
