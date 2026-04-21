@@ -222,6 +222,25 @@ footer {
   <p>Select an application to launch</p>
 </header>
 
+<div id="httpsWarning" style="display:none; background:#331a00; border-bottom:2px solid #ff9500; padding:12px 16px; font-size:0.8rem; color:#ff9500; line-height:1.6; text-align:center;">
+  <strong>Loaded over HTTPS — live data will not work.</strong><br>
+  Browsers block <code style="color:#cce4f0">ws://</code> connections from <code style="color:#cce4f0">https://</code> pages.
+  Serve the webapp over HTTP so all devices on the same WiFi can connect to the ESP directly.<br>
+  <span style="color:#cce4f0">On your MacBook:</span>
+  <code style="color:#00d4ff; background:#0c1a2e; padding:2px 6px; border-radius:4px;">cd webapp &amp;&amp; python3 -m http.server 8080</code>
+  <span style="color:#cce4f0">→ open</span>
+  <code style="color:#00d4ff">http://&lt;mac-ip&gt;:8080</code>
+  <span style="color:#cce4f0">on any device.</span>
+  <br>Or open directly from the ESP: <span id="espLink"></span>
+</div>
+<script>
+if (location.protocol === 'https:') {
+  document.getElementById('httpsWarning').style.display = 'block';
+  document.getElementById('espLink').innerHTML =
+    '<a href="http://esp-nmea.local/" style="color:#00d4ff">http://esp-nmea.local/</a>';
+}
+</script>
+
 <main>
   <div class="app-grid">
     

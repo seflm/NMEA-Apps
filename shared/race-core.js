@@ -887,27 +887,17 @@ function mqttConnect(host, port) {
     try { _mqttClient.end(true); } catch (e) {}
   }
 
-  // Safari requires the server to echo Sec-WebSocket-Protocol: mqtt in the
-  // upgrade response. If the ESP doesn't, Safari drops the socket. Connecting
-  // without the mqtt subprotocol (path-only URL) lets the WS upgrade succeed
-  // on browsers that are strict about subprotocol negotiation.
   const path = _state.mqtt.path || '/';
   const url  = `ws://${host}:${port}${path}`;
   console.log('[RaceCore] Connecting to MQTT:', url);
 
   _mqttClient = mqtt.connect(url, {
-    reconnectPeriod:  3000,
-    connectTimeout:   8000,
-    keepalive:        15,   // shorter = catches stale connections faster
-    protocolVersion:  4,
-    clean:            true,
-    clientId:         'race-assistant-' + Math.random().toString(16).substr(2, 8),
-    wsOptions: {
-      // Do NOT request the mqtt subprotocol — ESP firmware (esp-mqtt, ESPAsyncWebServer)
-      // often omits it in the upgrade response, which causes Safari to reject the socket.
-      // mqtt.js still speaks MQTT over the plain WebSocket connection.
-      protocol: undefined,
-    },
+    reconnectPeriod: 3000,
+    connectTimeout:  8000,
+    keepalive:       15,
+    protocolVersion: 4,
+    clean:           true,
+    clientId:        'race-assistant-' + Math.random().toString(16).substr(2, 8),
   });
 
   _mqttClient.on('connect', () => {

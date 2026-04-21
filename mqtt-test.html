@@ -167,6 +167,13 @@ input[type=checkbox] { width: auto; margin-right: 6px; vertical-align: middle; }
   <a href="index.html" class="back-link">MENU</a>
 </header>
 
+<div id="httpsWarning" style="display:none; background:#331a00; border-bottom:2px solid var(--warn); padding:12px 16px; font-size:0.8rem; color:var(--warn); line-height:1.6;">
+  <strong>HTTPS blocks WebSocket connections to the ESP.</strong><br>
+  Browsers refuse <code style="color:var(--text)">ws://</code> from an <code style="color:var(--text)">https://</code> page (mixed content policy). The MQTT connection will never work from this URL.<br>
+  <span style="color:var(--text)">Fix: open this app directly from the ESP — </span>
+  <span id="espLinks" style="color:var(--accent)"></span>
+</div>
+
 <div class="layout">
 
   <!-- STATUS -->
@@ -681,7 +688,24 @@ function renderDevInfo() {
   }
 }
 
+// ── HTTPS mixed-content warning ────────────────────────────────────────────
+function checkHttps() {
+  if (location.protocol !== 'https:') return;
+  const host = document.getElementById('cfgHost').value.trim();
+  const port = document.getElementById('cfgPort').value.trim();
+  const banner = document.getElementById('httpsWarning');
+  banner.style.display = 'block';
+  document.getElementById('espLinks').innerHTML =
+    `<a href="http://${host}/mqtt-test.html" style="color:var(--accent)">http://${host}/mqtt-test.html</a>` +
+    ` &nbsp;·&nbsp; ` +
+    `<a href="http://${host}:${port}" style="color:var(--accent)">http://${host}:${port}</a>`;
+  log('ERR', 'Page loaded over HTTPS — ws:// connections are blocked by the browser (mixed content). Load from the ESP directly over HTTP.');
+  document.getElementById('btnConnect').disabled = true;
+  document.getElementById('btnConnect').title = 'Cannot connect: page is on HTTPS, ws:// is blocked';
+}
+
 // ── Boot ───────────────────────────────────────────────────────────────────
+checkHttps();
 renderDevInfo();
 log('SYS', 'MQTT Tester ready — configure and press Connect');
 </script>
