@@ -71,7 +71,7 @@ header h1 {
   flex-shrink: 0;
   transition: background 0.3s;
 }
-.dot.live { background: var(--good); box-shadow: 0 0 6px var(--good); }
+.dot.live  { background: var(--good); box-shadow: 0 0 6px var(--good); }
 .dot.stale { background: var(--warn); }
 
 /* ── Live strip ─────────────────────────────────────────────────────── */
@@ -79,7 +79,7 @@ header h1 {
   background: var(--card);
   border-bottom: 1px solid var(--border);
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   flex-shrink: 0;
 }
 
@@ -146,7 +146,7 @@ header h1 {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12px 24px;
+  padding: 12px 16px;
   min-height: 0;
 }
 
@@ -155,59 +155,64 @@ header h1 {
   color: var(--muted);
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
 }
 
-.cog-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
+.range-display {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px;
   width: 100%;
-  max-width: 380px;
 }
 
-.cog-card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  padding: 20px 12px;
+.rnum-wrap {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  flex: 1;
 }
 
-.cog-type {
-  font-size: 0.65rem;
+.faster-chip {
+  font-size: 0.6rem;
   font-weight: bold;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
+  color: var(--good);
+  background: rgba(48, 209, 88, 0.12);
+  border: 1px solid var(--good);
+  border-radius: 10px;
+  padding: 2px 10px;
+  margin-bottom: 8px;
 }
 
-.cog-type.speed { color: var(--good); }
-.cog-type.dist  { color: var(--accent); }
+.faster-chip.hidden { visibility: hidden; }
 
-.cog-num {
-  font-size: 4.2rem;
+.rnum {
+  font-size: 5.5rem;
   font-weight: bold;
+  color: #ffffff;
   line-height: 1;
   font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
 }
 
-.cog-num.speed { color: var(--good); }
-.cog-num.dist  { color: var(--accent); }
+.rnum.dim { color: #6a9ab5; }
 
-.cog-deg {
-  font-size: 1rem;
+.runit {
+  font-size: 1.4rem;
   color: var(--muted);
-  letter-spacing: 0.05em;
+  margin-top: 4px;
 }
 
-.cog-sub {
-  font-size: 0.6rem;
-  color: var(--muted);
-  letter-spacing: 0.06em;
-  margin-top: 2px;
+/* vertically center the dash with the number row (below the chip) */
+.range-sep {
+  font-size: 3rem;
+  color: var(--border);
+  flex-shrink: 0;
+  /* chip is ~1.2rem tall + 8px gap; align dash to mid of number */
+  padding-top: calc(1.2rem + 8px + 5.5rem * 0.25);
+  line-height: 1;
 }
 
 /* ── Settings panel ─────────────────────────────────────────────────── */
@@ -296,9 +301,8 @@ header h1 {
 
 /* ── Mobile adjustments ─────────────────────────────────────────────── */
 @media (max-width: 380px) {
-  .cog-num { font-size: 3.4rem; }
-  .ls-val  { font-size: 1.1rem; }
-  .cog-card { padding: 16px 8px; }
+  .rnum { font-size: 4rem; }
+  .ls-val { font-size: 1.1rem; }
 }
 </style>
 </head>
@@ -328,6 +332,10 @@ header h1 {
     <div class="ls-lbl">TWD</div>
     <div class="ls-val" id="lsTwd">—</div>
   </div>
+  <div class="ls-cell">
+    <div class="ls-lbl">AWA</div>
+    <div class="ls-val" id="lsAwa">—</div>
+  </div>
 </div>
 
 <div class="mode-section">
@@ -337,18 +345,17 @@ header h1 {
 
 <div class="maneuver-section">
   <div class="maneuver-title" id="maneuverTitle">After TACK steer:</div>
-  <div class="cog-grid">
-    <div class="cog-card">
-      <div class="cog-type speed">SPEED</div>
-      <div class="cog-num speed" id="speedCog">—</div>
-      <div class="cog-deg">°</div>
-      <div class="cog-sub" id="speedSub">—</div>
+  <div class="range-display">
+    <div class="rnum-wrap">
+      <div class="faster-chip" id="chipA">FASTER</div>
+      <div class="rnum" id="cogA">—</div>
+      <div class="runit">°</div>
     </div>
-    <div class="cog-card">
-      <div class="cog-type dist">DISTANCE</div>
-      <div class="cog-num dist" id="distCog">—</div>
-      <div class="cog-deg">°</div>
-      <div class="cog-sub" id="distSub">—</div>
+    <div class="range-sep">—</div>
+    <div class="rnum-wrap">
+      <div class="faster-chip hidden" id="chipB">FASTER</div>
+      <div class="rnum dim" id="cogB">—</div>
+      <div class="runit">°</div>
     </div>
   </div>
 </div>
@@ -374,10 +381,10 @@ header h1 {
 'use strict';
 
 // First 36 polar constants
-const UPWIND_SPEED_TWA   = 63;   // more boat speed (higher TWA)
-const UPWIND_DIST_TWA    = 48;   // more VMG (tighter to wind)
-const DOWNWIND_SPEED_TWA = 130;  // more boat speed (closer to reach)
-const DOWNWIND_DIST_TWA  = 150;  // more VMG (deeper downwind)
+const UPWIND_FAST_TWA    = 65;   // faster boat speed (wider angle)
+const UPWIND_VMG_TWA     = 45;   // better VMG (tighter to wind)
+const DOWNWIND_FAST_TWA  = 130;  // faster boat speed (closer to reach)
+const DOWNWIND_VMG_TWA   = 150;  // better VMG (deeper downwind)
 
 const state = RaceCore.loadState();
 let settingsOpen = false;
@@ -398,9 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('connLbl').textContent = 'OFF';
   });
 
-  RaceCore.on('data', ({ live }) => {
-    updateDisplay(live);
-  });
+  RaceCore.on('data', ({ live }) => updateDisplay(live));
 });
 
 function norm(deg) {
@@ -415,9 +420,10 @@ function fmtDeg(v) {
 function updateDisplay(live) {
   const { cog, twa, twd } = live;
 
-  // Live strip
   document.getElementById('lsCog').textContent = cog != null ? fmtDeg(cog) + '°' : '—';
   document.getElementById('lsTwd').textContent = twd != null ? fmtDeg(twd) + '°' : '—';
+  const awa = live.awa;
+  document.getElementById('lsAwa').textContent = awa != null ? (awa >= 0 ? '+' : '') + Math.round(awa) + '°' : '—';
 
   if (twa == null || twd == null) {
     document.getElementById('lsTwa').textContent = '—';
@@ -425,69 +431,57 @@ function updateDisplay(live) {
     document.getElementById('modeBadge').className = 'mode-badge';
     document.getElementById('tackLabel').textContent = 'waiting for data';
     document.getElementById('maneuverTitle').textContent = 'After TACK steer:';
-    document.getElementById('speedCog').textContent = '—';
-    document.getElementById('distCog').textContent = '—';
-    document.getElementById('speedSub').textContent = '—';
-    document.getElementById('distSub').textContent = '—';
+    document.getElementById('cogA').textContent = '—';
+    document.getElementById('cogB').textContent = '—';
     return;
   }
 
-  // TWA: 0-360 where >180 = port tack (race-core convention)
-  const twAbs  = twa <= 180 ? twa : 360 - twa;
-  const onPort = twa > 180;
+  // TWA: 0–360 where >180 = port tack (race-core convention)
+  const twAbs   = twa <= 180 ? twa : 360 - twa;
+  const onPort  = twa > 180;
   const isUpwind = twAbs < 90;
 
-  // Live strip TWA — show signed for clarity
   const twaSigned = onPort ? -Math.round(twAbs) : Math.round(twAbs);
   document.getElementById('lsTwa').textContent = (twaSigned >= 0 ? '+' : '') + twaSigned + '°';
 
-  // Mode badge
   const badge = document.getElementById('modeBadge');
   badge.textContent = isUpwind ? 'UPWIND' : 'DOWNWIND';
-  badge.className = 'mode-badge' + (isUpwind ? '' : ' downwind');
+  badge.className   = 'mode-badge' + (isUpwind ? '' : ' downwind');
 
-  // Current tack / gybe
   const side = onPort ? 'PORT' : 'STARBOARD';
-  document.getElementById('tackLabel').textContent =
-    side + (isUpwind ? ' TACK' : ' GYBE');
+  document.getElementById('tackLabel').textContent = side + (isUpwind ? ' TACK' : ' GYBE');
+  document.getElementById('maneuverTitle').textContent = 'After ' + (isUpwind ? 'TACK' : 'GYBE') + ' steer:';
 
-  // Maneuver label
-  document.getElementById('maneuverTitle').textContent =
-    'After ' + (isUpwind ? 'TACK' : 'GYBE') + ' steer:';
-
-  // Calculate post-maneuver COG range
-  let speedCog, distCog, speedSubTwa, distSubTwa;
+  // Calculate post-maneuver COG range.
+  // Faster end is always shown left (cogA), VMG end right (cogB).
+  let fastCog, vmgCog;
 
   if (isUpwind) {
     if (onPort) {
-      // Tacking to starboard → COG = TWD - TWA
-      speedCog    = norm(twd - UPWIND_SPEED_TWA);
-      distCog     = norm(twd - UPWIND_DIST_TWA);
+      fastCog = norm(twd - UPWIND_FAST_TWA);
+      vmgCog  = norm(twd - UPWIND_VMG_TWA);
     } else {
-      // Tacking to port → COG = TWD + TWA
-      speedCog    = norm(twd + UPWIND_SPEED_TWA);
-      distCog     = norm(twd + UPWIND_DIST_TWA);
+      fastCog = norm(twd + UPWIND_FAST_TWA);
+      vmgCog  = norm(twd + UPWIND_VMG_TWA);
     }
-    speedSubTwa = UPWIND_SPEED_TWA + '° TWA';
-    distSubTwa  = UPWIND_DIST_TWA  + '° TWA';
   } else {
     if (onPort) {
-      // Gybing to starboard → COG = TWD - TWA
-      speedCog    = norm(twd - DOWNWIND_SPEED_TWA);
-      distCog     = norm(twd - DOWNWIND_DIST_TWA);
+      fastCog = norm(twd - DOWNWIND_FAST_TWA);
+      vmgCog  = norm(twd - DOWNWIND_VMG_TWA);
     } else {
-      // Gybing to port → COG = TWD + TWA
-      speedCog    = norm(twd + DOWNWIND_SPEED_TWA);
-      distCog     = norm(twd + DOWNWIND_DIST_TWA);
+      fastCog = norm(twd + DOWNWIND_FAST_TWA);
+      vmgCog  = norm(twd + DOWNWIND_VMG_TWA);
     }
-    speedSubTwa = DOWNWIND_SPEED_TWA + '° TWA';
-    distSubTwa  = DOWNWIND_DIST_TWA  + '° TWA';
   }
 
-  document.getElementById('speedCog').textContent = fmtDeg(speedCog);
-  document.getElementById('distCog').textContent  = fmtDeg(distCog);
-  document.getElementById('speedSub').textContent = speedSubTwa;
-  document.getElementById('distSub').textContent  = distSubTwa;
+  document.getElementById('cogA').textContent = fmtDeg(fastCog);
+  document.getElementById('cogB').textContent = fmtDeg(vmgCog);
+
+  // cogA is always the fast end — keep its chip visible, cogB hidden
+  document.getElementById('chipA').className = 'faster-chip';
+  document.getElementById('chipB').className = 'faster-chip hidden';
+  document.getElementById('cogA').className  = 'rnum';
+  document.getElementById('cogB').className  = 'rnum dim';
 }
 
 function toggleSettings() {
@@ -500,7 +494,7 @@ function toggleSettings() {
 
 function doConnect() {
   const host = document.getElementById('mqttHost').value.trim() || 'esp-nmea.local';
-  const port = parseInt(document.getElementById('mqttPort').value, 10) || 9001;
+  const port  = parseInt(document.getElementById('mqttPort').value, 10) || 9001;
   const s = RaceCore.getState();
   s.mqtt.host = host;
   s.mqtt.port = port;
