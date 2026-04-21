@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>MQTT Connection Tester</title>
+<style>
+:root {
+  --bg:      #070f1c;
+  --card:    #0c1a2e;
+  --border:  #1a3a5c;
+  --accent:  #00d4ff;
+  --accent2: #0099cc;
+  --text:    #cce4f0;
+  --muted:   #4a7a9b;
+  --warn:    #ff9500;
+  --danger:  #ff3b30;
+  --good:    #30d158;
+  --font:    'Courier New', monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: var(--font); min-height: 100vh;
+  display: flex; flex-direction: column;
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ── Header ── */
+header {
+  background: var(--card); border-bottom: 1px solid var(--border);
+  padding: 10px 16px; padding-top: max(10px, env(safe-area-inset-top));
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  flex-shrink: 0;
+}
+header h1 { font-size: 0.95rem; color: var(--accent); letter-spacing: 0.12em; }
+.back-link {
+  color: var(--muted); text-decoration: none; font-size: 0.75rem;
+  border: 1px solid var(--border); border-radius: 6px; padding: 4px 10px;
+  letter-spacing: 0.06em;
+}
+.back-link:hover { color: var(--text); border-color: var(--accent2); }
+
+/* ── Layout ── */
+.layout {
+  flex: 1; display: flex; flex-direction: column;
+  padding: 10px; gap: 10px; min-height: 0;
+  max-width: 860px; width: 100%; margin: 0 auto;
+}
+
+/* ── Cards ── */
+.card {
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 10px; padding: 12px 14px;
+  display: flex; flex-direction: column; gap: 8px;
+}
+.card-title {
+  font-size: 0.6rem; letter-spacing: 0.15em; color: var(--muted);
+  text-transform: uppercase; border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+/* ── Status badge ── */
+.status-row {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.dot {
+  width: 11px; height: 11px; border-radius: 50%;
+  background: var(--danger); flex-shrink: 0; transition: background 0.3s;
+}
+.dot.connected { background: var(--good); box-shadow: 0 0 8px var(--good); }
+.dot.connecting { background: var(--warn); animation: pulse 0.8s ease-in-out infinite; }
+.dot.stale { background: var(--warn); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.35} }
+#statusText { font-size: 0.82rem; color: var(--text); }
+#uptimeText { font-size: 0.7rem; color: var(--muted); margin-left: auto; }
+
+/* ── Metrics grid ── */
+.metrics {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px;
+}
+.metric { text-align: center; padding: 6px 4px; }
+.metric .lbl { font-size: 0.58rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.metric .val { font-size: 1.2rem; color: var(--accent); font-weight: bold; margin-top: 2px; }
+.metric .val.warn { color: var(--warn); }
+.metric .val.good { color: var(--good); }
+
+/* ── Config grid ── */
+.cfg-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cfg-full { grid-column: 1 / -1; }
+label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; display: block; margin-bottom: 3px; }
+input, select {
+  background: #070f1c; border: 1px solid var(--border); border-radius: 4px;
+  color: var(--text); padding: 6px 8px; font-family: var(--font);
+  font-size: 0.82rem; width: 100%;
+}
+input:focus, select:focus { outline: none; border-color: var(--accent); }
+input[type=checkbox] { width: auto; margin-right: 6px; vertical-align: middle; }
+.check-label { font-size: 0.78rem; color: var(--text); vertical-align: middle; cursor: pointer; }
+
+/* ── Buttons ── */
+.btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
+  background: #091520; border: 1px solid var(--border); border-radius: 6px;
+  color: var(--text); padding: 8px 14px; font-family: var(--font);
+  font-size: 0.8rem; cursor: pointer; letter-spacing: 0.05em;
+  transition: border-color 0.15s, color 0.15s; flex: 1; min-width: 80px;
+}
+.btn:hover { border-color: var(--accent); color: var(--accent); background: #0a1f30; }
+.btn:active { transform: scale(0.97); }
+.btn.primary { background: #003344; color: var(--accent); border-color: var(--accent2); }
+.btn.danger  { color: var(--danger); border-color: var(--danger); }
+.btn.danger:hover { background: #330000; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+/* ── Messages preview ── */
+.msg-strip {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px;
+  font-size: 0.72rem;
+}
+.msg-cell { background: #091520; border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; }
+.msg-cell .topic { color: var(--muted); font-size: 0.62rem; margin-bottom: 3px; letter-spacing: 0.05em; }
+.msg-cell .payload { color: var(--accent); word-break: break-all; }
+
+/* ── Debug log ── */
+#debugLog {
+  flex: 1; min-height: 200px; max-height: 420px;
+  overflow-y: auto; background: #04090f;
+  border: 1px solid var(--border); border-radius: 8px;
+  padding: 8px; font-size: 0.72rem; line-height: 1.55;
+}
+#debugLog::-webkit-scrollbar { width: 6px; }
+#debugLog::-webkit-scrollbar-track { background: transparent; }
+#debugLog::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+.log-line { display: flex; gap: 8px; padding: 1px 0; }
+.log-ts { color: #2a4a6b; flex-shrink: 0; }
+.log-level { flex-shrink: 0; min-width: 40px; font-weight: bold; }
+.log-level.INFO  { color: var(--muted); }
+.log-level.OK    { color: var(--good); }
+.log-level.WARN  { color: var(--warn); }
+.log-level.ERR   { color: var(--danger); }
+.log-level.DATA  { color: #7a4af0; }
+.log-level.WS    { color: #ff9f00; }
+.log-level.SYS   { color: var(--accent2); }
+.log-msg { color: var(--text); word-break: break-all; }
+
+/* ── Raw WS section ── */
+.ws-status { font-size: 0.75rem; }
+.tag {
+  display: inline-block; padding: 2px 8px; border-radius: 10px;
+  font-size: 0.62rem; letter-spacing: 0.06em; border: 1px solid;
+}
+.tag.ok   { color: var(--good); border-color: var(--good); background: #002a12; }
+.tag.fail { color: var(--danger); border-color: var(--danger); background: #2a0000; }
+.tag.idle { color: var(--muted); border-color: var(--border); background: transparent; }
+
+/* ── Device info ── */
+.dev-info { font-size: 0.7rem; color: var(--muted); line-height: 1.8; }
+.dev-info span { color: var(--text); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>MQTT CONNECTION TESTER</h1>
+  <a href="index.html" class="back-link">MENU</a>
+</header>
+
+<div class="layout">
+
+  <!-- STATUS -->
+  <div class="card">
+    <div class="card-title">Connection Status</div>
+    <div class="status-row">
+      <div class="dot" id="dot"></div>
+      <span id="statusText">Disconnected</span>
+      <span id="uptimeText"></span>
+    </div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="lbl">Reconnects</div>
+        <div class="val" id="mReconnect">0</div>
+      </div>
+      <div class="metric">
+        <div class="lbl">Messages</div>
+        <div class="val good" id="mMessages">0</div>
+      </div>
+      <div class="metric">
+        <div class="lbl">Errors</div>
+        <div class="val warn" id="mErrors">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CONFIG -->
+  <div class="card">
+    <div class="card-title">Configuration</div>
+    <div class="cfg-grid">
+      <div>
+        <label for="cfgHost">Host / IP</label>
+        <input id="cfgHost" type="text" value="esp-nmea.local" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div>
+        <label for="cfgPort">Port</label>
+        <input id="cfgPort" type="number" value="9001" min="1" max="65535">
+      </div>
+      <div>
+        <label for="cfgProto">Protocol</label>
+        <select id="cfgProto">
+          <option value="ws">ws://  (plain WebSocket)</option>
+          <option value="wss">wss://  (TLS WebSocket)</option>
+        </select>
+      </div>
+      <div>
+        <label for="cfgPath">WS Path</label>
+        <input id="cfgPath" type="text" value="/mqtt" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div>
+        <label for="cfgKeepalive">Keepalive (s)</label>
+        <input id="cfgKeepalive" type="number" value="15" min="5" max="300">
+      </div>
+      <div>
+        <label for="cfgTimeout">Connect Timeout (ms)</label>
+        <input id="cfgTimeout" type="number" value="8000" min="1000" max="30000">
+      </div>
+      <div>
+        <label for="cfgReconnect">Reconnect Period (ms)</label>
+        <input id="cfgReconnect" type="number" value="3000" min="500" max="30000">
+      </div>
+      <div>
+        <label for="cfgTopic">Subscribe Topic</label>
+        <input id="cfgTopic" type="text" value="esp-nmea/#" autocorrect="off" autocapitalize="none" spellcheck="false">
+      </div>
+      <div class="cfg-full">
+        <label>
+          <input type="checkbox" id="cfgClean" checked>
+          <span class="check-label">Clean Session</span>
+        </label>
+        &nbsp;&nbsp;
+        <label>
+          <input type="checkbox" id="cfgAutoReconnect" checked>
+          <span class="check-label">Auto Reconnect</span>
+        </label>
+        &nbsp;&nbsp;
+        <label>
+          <input type="checkbox" id="cfgVisibility" checked>
+          <span class="check-label">Reconnect on Page Visible (iOS fix)</span>
+        </label>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn primary" id="btnConnect" onclick="doConnect()">Connect</button>
+      <button class="btn danger" id="btnDisconnect" onclick="doDisconnect()" disabled>Disconnect</button>
+      <button class="btn" id="btnPing" onclick="doPing()" disabled>Ping / Publish</button>
+      <button class="btn" onclick="clearLog()">Clear Log</button>
+    </div>
+  </div>
+
+  <!-- RAW WEBSOCKET TEST -->
+  <div class="card">
+    <div class="card-title">Raw WebSocket Test (no MQTT library)</div>
+    <div style="font-size:0.72rem; color:var(--muted); margin-bottom:4px;">
+      Tests if the TCP/WS layer works at all — useful when MQTT.js fails silently.
+    </div>
+    <div class="btn-row">
+      <button class="btn" onclick="doRawWS()">Test Raw WS</button>
+      <button class="btn" onclick="doRawWSS()">Test Raw WSS</button>
+      <button class="btn" onclick="doFetch()">HTTP Reachability</button>
+    </div>
+    <div id="rawResult" class="ws-status"><span class="tag idle">Not tested</span></div>
+  </div>
+
+  <!-- RECENT MESSAGES -->
+  <div class="card">
+    <div class="card-title">Last Received Messages (per topic)</div>
+    <div class="msg-strip" id="msgStrip">
+      <div class="msg-cell"><div class="topic">--</div><div class="payload" style="color:var(--muted)">No messages yet</div></div>
+    </div>
+  </div>
+
+  <!-- DEBUG LOG -->
+  <div class="card" style="flex:1; min-height:0; display:flex; flex-direction:column;">
+    <div class="card-title" style="flex-shrink:0;">
+      Debug Log
+      <span style="float:right; color:var(--muted); font-weight:normal;" id="logCount">0 entries</span>
+    </div>
+    <div id="debugLog"></div>
+  </div>
+
+  <!-- DEVICE INFO -->
+  <div class="card">
+    <div class="card-title">Device &amp; Browser Info</div>
+    <div class="dev-info" id="devInfo">Loading...</div>
+  </div>
+
+</div>
+
+<!-- Load MQTT.js from CDN; if offline/blocked, we fall back to raw WS -->
+<script src="https://unpkg.com/mqtt@5.10.4/dist/mqtt.min.js"></script>
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let client = null;
+let logCount = 0;
+let msgCount = 0;
+let errCount = 0;
+let reconnectCount = 0;
+let connectTs = null;
+let uptimeInterval = null;
+let msgCache = {};  // topic → last payload string
+
+// ── Logging ────────────────────────────────────────────────────────────────
+const LOG = document.getElementById('debugLog');
+const LOGCOUNT = document.getElementById('logCount');
+
+function log(level, msg) {
+  const now = new Date();
+  const ts = now.toTimeString().slice(0,8) + '.' + String(now.getMilliseconds()).padStart(3,'0');
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML =
+    `<span class="log-ts">${ts}</span>` +
+    `<span class="log-level ${level}">${level.padEnd(4)}</span>` +
+    `<span class="log-msg">${escHtml(msg)}</span>`;
+  LOG.appendChild(line);
+  LOG.scrollTop = LOG.scrollHeight;
+  logCount++;
+  LOGCOUNT.textContent = logCount + ' entries';
+}
+
+function escHtml(s) {
+  return String(s)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function clearLog() {
+  LOG.innerHTML = '';
+  logCount = 0;
+  LOGCOUNT.textContent = '0 entries';
+}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────
+function setDot(state) {
+  const d = document.getElementById('dot');
+  d.className = 'dot ' + (state || '');
+}
+
+function setStatus(txt) {
+  document.getElementById('statusText').textContent = txt;
+}
+
+function setBtns(connected) {
+  document.getElementById('btnConnect').disabled    = connected;
+  document.getElementById('btnDisconnect').disabled = !connected;
+  document.getElementById('btnPing').disabled       = !connected;
+}
+
+function incMetric(id) {
+  const el = document.getElementById(id);
+  el.textContent = parseInt(el.textContent || '0', 10) + 1;
+}
+
+function startUptime() {
+  connectTs = Date.now();
+  clearInterval(uptimeInterval);
+  uptimeInterval = setInterval(() => {
+    if (!connectTs) return;
+    const s = Math.floor((Date.now() - connectTs) / 1000);
+    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
+    document.getElementById('uptimeText').textContent =
+      'uptime ' + [h,m,sec].map(n => String(n).padStart(2,'0')).join(':');
+  }, 1000);
+}
+
+function stopUptime() {
+  clearInterval(uptimeInterval);
+  connectTs = null;
+  document.getElementById('uptimeText').textContent = '';
+}
+
+// ── Message display ────────────────────────────────────────────────────────
+function updateMsgStrip(topic, payloadStr) {
+  msgCache[topic] = payloadStr;
+  const strip = document.getElementById('msgStrip');
+  strip.innerHTML = '';
+  for (const [t, p] of Object.entries(msgCache)) {
+    const cell = document.createElement('div');
+    cell.className = 'msg-cell';
+    cell.innerHTML = `<div class="topic">${escHtml(t)}</div><div class="payload">${escHtml(p.slice(0,120))}</div>`;
+    strip.appendChild(cell);
+  }
+}
+
+// ── MQTT connection ────────────────────────────────────────────────────────
+function buildUrl() {
+  const host  = document.getElementById('cfgHost').value.trim();
+  const port  = document.getElementById('cfgPort').value.trim();
+  const proto = document.getElementById('cfgProto').value;
+  const path  = document.getElementById('cfgPath').value.trim();
+  return `${proto}://${host}:${port}${path}`;
+}
+
+function doConnect() {
+  if (typeof mqtt === 'undefined') {
+    log('ERR', 'MQTT.js library not loaded (CDN unreachable?). Using raw WS test instead.');
+    doRawWS();
+    return;
+  }
+
+  if (client) {
+    try { client.end(true); } catch(e) {}
+    client = null;
+  }
+
+  const url       = buildUrl();
+  const keepalive = parseInt(document.getElementById('cfgKeepalive').value) || 15;
+  const timeout   = parseInt(document.getElementById('cfgTimeout').value)   || 8000;
+  const reconn    = parseInt(document.getElementById('cfgReconnect').value)  || 3000;
+  const clean     = document.getElementById('cfgClean').checked;
+  const autoRecon = document.getElementById('cfgAutoReconnect').checked;
+  const topic     = document.getElementById('cfgTopic').value.trim();
+  const clientId  = 'mqtt-test-' + Math.random().toString(16).substr(2, 8);
+
+  log('INFO', `Attempting MQTT connect → ${url}`);
+  log('INFO', `Options: keepalive=${keepalive}s  timeout=${timeout}ms  reconnect=${autoRecon ? reconn+'ms' : 'off'}  clean=${clean}  clientId=${clientId}`);
+
+  setDot('connecting');
+  setStatus('Connecting…');
+
+  const opts = {
+    keepalive,
+    connectTimeout: timeout,
+    reconnectPeriod: autoRecon ? reconn : 0,
+    clean,
+    clientId,
+    protocolVersion: 4,
+  };
+
+  try {
+    client = mqtt.connect(url, opts);
+  } catch(e) {
+    log('ERR', 'mqtt.connect() threw: ' + e.message);
+    setDot('');
+    setStatus('Error — see log');
+    return;
+  }
+
+  client.on('connect', (connack) => {
+    log('OK',   `Connected! returnCode=${connack.returnCode} sessionPresent=${connack.sessionPresent}`);
+    setDot('connected');
+    setStatus('Connected');
+    setBtns(true);
+    startUptime();
+    client.subscribe(topic, { qos: 0 }, (err, granted) => {
+      if (err) {
+        log('ERR', 'Subscribe failed: ' + err.message);
+      } else {
+        log('OK', `Subscribed to "${topic}" — granted: ` + JSON.stringify(granted));
+      }
+    });
+  });
+
+  client.on('reconnect', () => {
+    reconnectCount++;
+    document.getElementById('mReconnect').textContent = reconnectCount;
+    log('WARN', `Reconnecting… (attempt #${reconnectCount})`);
+    setDot('connecting');
+    setStatus('Reconnecting…');
+    stopUptime();
+  });
+
+  client.on('close', () => {
+    log('WARN', 'Connection closed');
+    setDot('');
+    setStatus('Disconnected');
+    setBtns(false);
+    stopUptime();
+  });
+
+  client.on('offline', () => {
+    log('WARN', 'Client went offline (no network or broker unreachable)');
+    setDot('');
+    setStatus('Offline');
+  });
+
+  client.on('error', (err) => {
+    errCount++;
+    document.getElementById('mErrors').textContent = errCount;
+    log('ERR', 'MQTT error: ' + (err.message || err));
+    if (err.stack) log('ERR', 'Stack: ' + err.stack.split('\n')[1]);
+    setDot('');
+    setStatus('Error');
+    setBtns(false);
+    stopUptime();
+  });
+
+  client.on('message', (topic, payload) => {
+    msgCount++;
+    document.getElementById('mMessages').textContent = msgCount;
+    const str = payload.toString();
+    log('DATA', `[${topic}] ${str.slice(0, 120)}${str.length > 120 ? '…' : ''}`);
+    updateMsgStrip(topic, str);
+  });
+
+  client.on('packetsend', (pkt) => {
+    log('INFO', `→ Packet sent: cmd=${pkt.cmd}`);
+  });
+
+  client.on('packetreceive', (pkt) => {
+    log('INFO', `← Packet recv: cmd=${pkt.cmd}`);
+  });
+}
+
+function doDisconnect() {
+  if (!client) return;
+  log('INFO', 'Manual disconnect');
+  client.end(true, {}, () => {
+    log('INFO', 'Disconnected cleanly');
+    setDot('');
+    setStatus('Disconnected');
+    setBtns(false);
+    stopUptime();
+    client = null;
+  });
+}
+
+function doPing() {
+  if (!client || !client.connected) {
+    log('WARN', 'Not connected — cannot ping');
+    return;
+  }
+  const ts = Date.now();
+  const testTopic = 'mqtt-test/ping';
+  client.publish(testTopic, JSON.stringify({ ts, from: 'mqtt-tester' }), { qos: 0 }, (err) => {
+    if (err) {
+      log('ERR', 'Publish failed: ' + err.message);
+    } else {
+      log('OK', `Published to ${testTopic} in ${Date.now() - ts}ms`);
+    }
+  });
+}
+
+// ── Raw WebSocket test ─────────────────────────────────────────────────────
+function doRawWS() {
+  const host = document.getElementById('cfgHost').value.trim();
+  const port = document.getElementById('cfgPort').value.trim();
+  const path = document.getElementById('cfgPath').value.trim();
+  _testRawWS(`ws://${host}:${port}${path}`);
+}
+
+function doRawWSS() {
+  const host = document.getElementById('cfgHost').value.trim();
+  const port = document.getElementById('cfgPort').value.trim();
+  const path = document.getElementById('cfgPath').value.trim();
+  _testRawWS(`wss://${host}:${port}${path}`);
+}
+
+function _testRawWS(url) {
+  log('WS', `Raw WebSocket test → ${url}`);
+  document.getElementById('rawResult').innerHTML = '<span class="tag idle">Testing…</span>';
+  const t0 = Date.now();
+  let ws;
+  const timer = setTimeout(() => {
+    log('WS', `Timeout after 8s — WS handshake did not complete`);
+    document.getElementById('rawResult').innerHTML = '<span class="tag fail">Timeout (8s)</span>';
+    try { ws.close(); } catch(e) {}
+  }, 8000);
+  try {
+    ws = new WebSocket(url, ['mqtt']);
+    ws.binaryType = 'arraybuffer';
+    ws.onopen = () => {
+      clearTimeout(timer);
+      const dt = Date.now() - t0;
+      log('WS', `WebSocket opened in ${dt}ms — protocol="${ws.protocol}" — closing (test only)`);
+      document.getElementById('rawResult').innerHTML = `<span class="tag ok">Open in ${dt}ms — protocol="${ws.protocol || 'none'}"</span>`;
+      ws.close();
+    };
+    ws.onerror = (e) => {
+      clearTimeout(timer);
+      log('WS', 'WebSocket error: ' + (e.message || 'unknown (check console)'));
+      document.getElementById('rawResult').innerHTML = '<span class="tag fail">Error — see log</span>';
+    };
+    ws.onclose = (e) => {
+      clearTimeout(timer);
+      log('WS', `WebSocket closed: code=${e.code} reason="${e.reason}" wasClean=${e.wasClean}`);
+    };
+    ws.onmessage = (e) => {
+      log('WS', `Raw data received (${typeof e.data === 'string' ? e.data.length + ' chars' : e.data.byteLength + ' bytes'})`);
+    };
+  } catch(e) {
+    clearTimeout(timer);
+    log('WS', 'WebSocket constructor threw: ' + e.message);
+    document.getElementById('rawResult').innerHTML = '<span class="tag fail">' + escHtml(e.message) + '</span>';
+  }
+}
+
+function doFetch() {
+  const host = document.getElementById('cfgHost').value.trim();
+  const url = `http://${host}/`;
+  log('WS', `HTTP reachability test → ${url}`);
+  const t0 = Date.now();
+  fetch(url, { mode: 'no-cors', signal: AbortSignal.timeout(6000) })
+    .then(() => {
+      const dt = Date.now() - t0;
+      log('OK', `HTTP responded in ${dt}ms (no-cors mode — cannot read body, but host is reachable)`);
+      document.getElementById('rawResult').innerHTML += ` <span class="tag ok">HTTP ${dt}ms</span>`;
+    })
+    .catch(e => {
+      log('ERR', `HTTP fetch failed: ${e.message}`);
+      document.getElementById('rawResult').innerHTML += ` <span class="tag fail">HTTP: ${escHtml(e.message)}</span>`;
+    });
+}
+
+// ── Page Visibility reconnect (iOS fix) ───────────────────────────────────
+document.addEventListener('visibilitychange', () => {
+  const visible = document.visibilityState === 'visible';
+  log('SYS', `Page visibility changed → ${document.visibilityState}`);
+
+  if (!visible) return;
+  if (!document.getElementById('cfgVisibility').checked) return;
+
+  if (client) {
+    if (!client.connected) {
+      log('SYS', 'Page became visible, client not connected — triggering reconnect');
+      try { client.reconnect(); } catch(e) {
+        log('ERR', 'client.reconnect() failed: ' + e.message + ' — re-connecting fresh');
+        doConnect();
+      }
+    } else {
+      log('SYS', 'Page became visible, client still connected — OK');
+    }
+  }
+});
+
+// ── Network Online event ───────────────────────────────────────────────────
+window.addEventListener('online', () => {
+  log('SYS', 'Network online event fired');
+  if (client && !client.connected) {
+    log('SYS', 'Was disconnected — reconnecting after network came online');
+    try { client.reconnect(); } catch(e) { doConnect(); }
+  }
+});
+window.addEventListener('offline', () => {
+  log('SYS', 'Network offline event fired');
+});
+
+// ── Device info ────────────────────────────────────────────────────────────
+function renderDevInfo() {
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isSafari = /Safari/.test(ua) && !/Chrome/.test(ua);
+  const isMac = /Macintosh/.test(ua);
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const connInfo = conn
+    ? `${conn.effectiveType || '?'} / downlink ${conn.downlink || '?'}Mbps`
+    : 'navigator.connection not available';
+
+  document.getElementById('devInfo').innerHTML = [
+    `<b>Platform:</b>   <span>${navigator.platform}</span>`,
+    `<b>iOS:</b>        <span>${isIOS}</span>`,
+    `<b>Safari:</b>     <span>${isSafari}</span>`,
+    `<b>Mac:</b>        <span>${isMac}</span>`,
+    `<b>Language:</b>   <span>${navigator.language}</span>`,
+    `<b>Network:</b>    <span>${connInfo}</span>`,
+    `<b>Online:</b>     <span>${navigator.onLine}</span>`,
+    `<b>UA:</b>         <span style="word-break:break-all">${ua}</span>`,
+  ].join('<br>');
+
+  log('SYS', 'Platform: ' + navigator.platform + (isIOS ? ' (iOS)' : '') + (isSafari ? ' (Safari)' : ''));
+  log('SYS', 'UA: ' + ua);
+  if (isIOS) {
+    log('WARN', 'iOS detected — Safari may throttle WebSocket when page is backgrounded. Keep "Reconnect on Page Visible" enabled.');
+  }
+  if (typeof mqtt === 'undefined') {
+    log('ERR', 'MQTT.js CDN script did not load — raw WebSocket test is still available.');
+  } else {
+    log('INFO', 'MQTT.js loaded from CDN — version: ' + (mqtt.version || 'unknown'));
+  }
+}
+
+// ── Boot ───────────────────────────────────────────────────────────────────
+renderDevInfo();
+log('SYS', 'MQTT Tester ready — configure and press Connect');
+</script>
+</body>
+</html>
