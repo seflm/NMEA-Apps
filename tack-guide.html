@@ -76,7 +76,7 @@ header h1 {
   background: var(--card);
   border-bottom: 2px solid var(--border);
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   flex-shrink: 0;
 }
 
@@ -84,8 +84,10 @@ header h1 {
   padding: 6px 4px;
   text-align: center;
   border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
 }
-.ls-cell:last-child { border-right: none; }
+.ls-cell:nth-child(3n) { border-right: none; }
+.ls-cell:nth-last-child(-n + 3) { border-bottom: none; }
 
 .ls-lbl {
   font-size: 0.55rem;
@@ -96,11 +98,27 @@ header h1 {
 }
 
 .ls-val {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 900;
   color: #00d4ff;
   font-variant-numeric: tabular-nums;
-  line-height: 1.1;
+  line-height: 1.05;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.ls-main {
+  font-size: 1.1rem;
+}
+
+.ls-sub {
+  font-size: 0.52rem;
+  font-weight: 700;
+  color: #7ab8d4;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-top: 1px;
 }
 
 /* ── Scrollable middle ──────────────────────────────────────────────── */
@@ -871,11 +889,12 @@ header h1 {
 
 <!-- ── Live strip ──────────────────────────────────────────────────── -->
 <div class="live-strip">
-  <div class="ls-cell"><div class="ls-lbl">COG</div><div class="ls-val" id="lsCog">—</div></div>
-  <div class="ls-cell"><div class="ls-lbl">TWA</div><div class="ls-val" id="lsTwa">—</div></div>
-  <div class="ls-cell"><div class="ls-lbl">TWD</div><div class="ls-val" id="lsTwd">—</div></div>
   <div class="ls-cell"><div class="ls-lbl">TWS</div><div class="ls-val" id="lsTws">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">TWA</div><div class="ls-val" id="lsTwa">—</div></div>
   <div class="ls-cell"><div class="ls-lbl">AWA</div><div class="ls-val" id="lsAwa">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">TWD</div><div class="ls-val" id="lsTwd">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">W/TWS</div><div class="ls-val" id="lsWtrRatio">—</div></div>
+  <div class="ls-cell"><div class="ls-lbl">COG</div><div class="ls-val" id="lsCog">—</div></div>
 </div>
 
 <!-- ── Scrollable main content ─────────────────────────────────────── -->
@@ -988,7 +1007,8 @@ header h1 {
     <!-- Big bearing display / input -->
     <div class="modal-display">
       <input class="modal-brg-input" type="number" id="modalBrgInput"
-             min="0" max="359" inputmode="numeric" placeholder="000">
+             min="0" max="359" inputmode="numeric" placeholder="000"
+             onkeydown="if(event.key==='Enter'){event.preventDefault();confirmSetMark();}">
       <div class="modal-deg-label">degrees</div>
       <div class="modal-hint">from current GPS position · need 2+ for triangulation</div>
     </div>
@@ -1159,6 +1179,12 @@ function fmtSignedDeg(v) {
   if (v == null || isNaN(v)) return '—';
   const d = Math.round(((v + 540) % 360) - 180);
   return (d >= 0 ? '+' : '') + d + '°';
+}
+
+function setStripValue(id, main, sub) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.innerHTML = '<span class="ls-main">' + main + '</span><span class="ls-sub">' + sub + '</span>';
 }
 
 function cogDiffRad(a, b) {
@@ -1377,16 +1403,19 @@ function applyFrozenGuidance() {
 function updateDisplay(live) {
   const { cog, twa, twd, tws } = live || {};
   const awa = live && live.awa;
+  const spd = live && live.spd;
 
   // Live strip
-  document.getElementById('lsCog').textContent = cog != null && !isNaN(cog) ? fmtDeg(cog) + '°' : '—';
-  document.getElementById('lsTwd').textContent = twd != null && !isNaN(twd) ? fmtDeg(twd) + '°' : '—';
-  document.getElementById('lsTws').textContent = tws != null && !isNaN(tws) ? tws.toFixed(1) : '—';
-  document.getElementById('lsAwa').textContent =
-    awa != null && !isNaN(awa) ? fmtSignedDeg(awa) : '—';
+  setStripValue('lsCog', cog != null && !isNaN(cog) ? fmtDeg(cog) : '—', 'deg');
+  setStripValue('lsTwd', twd != null && !isNaN(twd) ? fmtDeg(twd) : '—', 'deg');
+  setStripValue('lsTws', tws != null && !isNaN(tws) ? tws.toFixed(1) : '—', 'kt');
+  setStripValue('lsAwa', awa != null && !isNaN(awa) ? fmtSignedDeg(awa) : '—', 'deg');
+  const hasRatio = tws != null && !isNaN(tws) && tws > 0 && spd != null && !isNaN(spd);
+  const ratioPct = hasRatio ? Math.round((spd / tws) * 100) : null;
+  setStripValue('lsWtrRatio', ratioPct != null ? ratioPct + '%' : '—', 'water');
 
   if (twa == null || twd == null || isNaN(twa) || isNaN(twd)) {
-    document.getElementById('lsTwa').textContent = '—';
+    setStripValue('lsTwa', '—', 'deg');
     document.getElementById('modeBadge').textContent = '—';
     document.getElementById('modeBadge').className = 'mode-badge';
     document.getElementById('tackLabel').textContent = 'waiting for data';
@@ -1407,8 +1436,7 @@ function updateDisplay(live) {
   const onPort  = twa > 180;
   const isUpwind = twAbs < 90;
 
-  document.getElementById('lsTwa').textContent =
-    (onPort ? '-' : '+') + Math.round(twAbs) + '°';
+  setStripValue('lsTwa', (onPort ? '-' : '+') + Math.round(twAbs) + '°', 'deg');
 
   // Mode badge
   const badge = document.getElementById('modeBadge');
