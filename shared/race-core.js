@@ -857,16 +857,6 @@ const _live = {
 
 let _mqttClient    = null;
 let _mqttConnected = false;
-let _mqttHost = null;
-let _mqttPort = null;
-let _mqttConnectGeneration = 0;
-let _mqttReconnectTimer = null;
-let _mqttWatchdogTimer = null;
-let _mqttWakeHooksInstalled = false;
-let _mqttReconnectDelayMs = 1000;
-let _mqttLastReconnectAt = 0;
-let _mqttLastConnectAt = 0;
-let _mqttHiddenDisconnect = false;
 
 const _listeners = {};
 
@@ -884,92 +874,6 @@ function off(event, cb) {
   _listeners[event] = _listeners[event].filter(f => f !== cb);
 }
 
-function _getClientId() {
-  try {
-    const key = 'race.mqtt.clientId';
-    let cid = localStorage.getItem(key);
-    if (!cid) {
-      cid = 'race-assistant-' + Math.random().toString(16).slice(2, 10);
-      localStorage.setItem(key, cid);
-    }
-    return cid;
-  } catch (e) {
-    return 'race-assistant-' + Math.random().toString(16).slice(2, 10);
-  }
-}
-
-function _stopMqttTimers() {
-  if (_mqttReconnectTimer) {
-    clearTimeout(_mqttReconnectTimer);
-    _mqttReconnectTimer = null;
-  }
-  if (_mqttWatchdogTimer) {
-    clearInterval(_mqttWatchdogTimer);
-    _mqttWatchdogTimer = null;
-  }
-}
-
-function _resetReconnectBackoff() {
-  _mqttReconnectDelayMs = 1000;
-}
-
-function _scheduleReconnect(reason, delayMs) {
-  if (!_mqttHost || !_mqttPort) return;
-  if (_mqttReconnectTimer) return;
-  if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-  const now = Date.now();
-  if (now - _mqttLastReconnectAt < 1000) return;
-  const delay = Math.max(0, delayMs || 0);
-  _mqttReconnectTimer = setTimeout(() => {
-    _mqttReconnectTimer = null;
-    _mqttLastReconnectAt = Date.now();
-    console.warn('[RaceCore] Forcing MQTT reconnect:', reason || 'unspecified');
-    mqttConnect(_mqttHost, _mqttPort);
-  }, delay);
-}
-
-function _startWatchdog(gen) {
-  if (_mqttWatchdogTimer) clearInterval(_mqttWatchdogTimer);
-  _mqttWatchdogTimer = setInterval(() => {
-    if (gen !== _mqttConnectGeneration) return;
-    if (!_mqttClient || !_mqttConnected) return;
-    if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return;
-    const ageMs = _live.lastTs ? Date.now() - _live.lastTs : Infinity;
-    // If broker socket looks connected but no telemetry for too long,
-    // force a full reconnect (common after mobile sleep/lock in Chrome).
-    if (ageMs > 90000) _scheduleReconnect('watchdog stale data', 500);
-  }, 5000);
-}
-
-function _installMqttWakeHooks() {
-  if (_mqttWakeHooksInstalled || typeof window === 'undefined') return;
-  _mqttWakeHooksInstalled = true;
-
-  const wakeReconnect = () => _scheduleReconnect('page wake/network change', 500);
-
-  window.addEventListener('online', wakeReconnect);
-  window.addEventListener('pageshow', wakeReconnect);
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      if (_mqttHiddenDisconnect || !_mqttConnected) wakeReconnect();
-      _mqttHiddenDisconnect = false;
-      return;
-    }
-    // Chrome on mobile can keep dead WS sessions while backgrounded; ending
-    // intentionally here avoids leaking stale sockets on the ESP broker.
-    if (_mqttClient) {
-      try { _mqttClient.end(true); } catch (e) {}
-      _mqttConnected = false;
-      _emit('disconnect', null);
-      _updateBadge();
-      _mqttHiddenDisconnect = true;
-    }
-  });
-  window.addEventListener('beforeunload', () => {
-    try { if (_mqttClient) _mqttClient.end(true); } catch (e) {}
-  });
-}
-
 function mqttConnect(host, port) {
   if (typeof mqtt === 'undefined') {
     console.error('[RaceCore] mqtt.js not loaded — check mqtt CDN script include');
@@ -978,9 +882,6 @@ function mqttConnect(host, port) {
 
   host = host || _state.mqtt.host || 'esp-nmea.local';
   port = port || _state.mqtt.port || 9001;
-  _mqttHost = host;
-  _mqttPort = port;
-  const gen = ++_mqttConnectGeneration;
 
   // Chrome (and Android Chrome) do not resolve .local mDNS hostnames — only
   // Safari/Bonjour does. When the page is served over HTTP directly from an
@@ -997,21 +898,18 @@ function mqttConnect(host, port) {
   if (_mqttClient) {
     try { _mqttClient.end(true); } catch (e) {}
   }
-  _stopMqttTimers();
-  _installMqttWakeHooks();
 
   const path = _state.mqtt.path || '/';
   const url  = `ws://${host}:${port}${path}`;
   console.log('[RaceCore] Connecting to MQTT:', url);
 
   _mqttClient = mqtt.connect(url, {
-    reconnectPeriod: 0,
+    reconnectPeriod: 3000,
     connectTimeout:  8000,
     keepalive:       15,
     protocolVersion: 4,
     clean:           true,
-    resubscribe:     true,
-    clientId:        _getClientId(),
+    clientId:        'race-assistant-' + Math.random().toString(16).substr(2, 8),
     // Skip Sec-WebSocket-Protocol negotiation. Chrome requires the server to
     // echo back 'mqtt' in the 101 response; most ESP firmware doesn't, so
     // Chrome drops the connection. Sending no subprotocol means no echo is
@@ -1021,57 +919,40 @@ function mqttConnect(host, port) {
   });
 
   _mqttClient.on('connect', () => {
-    if (gen !== _mqttConnectGeneration) return;
     _mqttConnected = true;
-    _mqttLastConnectAt = Date.now();
-    _resetReconnectBackoff();
     _mqttClient.subscribe('esp-nmea/#');
     _emit('connect', null);
     _updateBadge();
-    _startWatchdog(gen);
     console.log('[RaceCore] MQTT connected to', url);
   });
 
   _mqttClient.on('reconnect', () => {
-    if (gen !== _mqttConnectGeneration) return;
     _mqttConnected = false;
     _updateBadge();
   });
 
   _mqttClient.on('close', () => {
-    if (gen !== _mqttConnectGeneration) return;
     console.log('[RaceCore] MQTT connection closed');
     _mqttConnected = false;
     _emit('disconnect', null);
     _updateBadge();
-    if (Date.now() - _mqttLastConnectAt > 4000) {
-      _mqttReconnectDelayMs = Math.min(_mqttReconnectDelayMs * 1.6, 15000);
-    }
-    _scheduleReconnect('close event', _mqttReconnectDelayMs);
   });
 
   _mqttClient.on('error', (err) => {
-    if (gen !== _mqttConnectGeneration) return;
     console.error('[RaceCore] MQTT error:', err);
     console.error('[RaceCore] Error details:', err.message, err.stack);
     _mqttConnected = false;
     _emit('disconnect', null);
     _updateBadge();
-    _mqttReconnectDelayMs = Math.min(_mqttReconnectDelayMs * 1.6, 15000);
-    _scheduleReconnect('error event', _mqttReconnectDelayMs);
   });
 
   _mqttClient.on('offline', () => {
-    if (gen !== _mqttConnectGeneration) return;
     console.warn('[RaceCore] MQTT client offline');
     _mqttConnected = false;
     _updateBadge();
-    _mqttReconnectDelayMs = Math.min(_mqttReconnectDelayMs * 1.6, 15000);
-    _scheduleReconnect('offline event', _mqttReconnectDelayMs);
   });
 
   _mqttClient.on('message', (topic, payload) => {
-    if (gen !== _mqttConnectGeneration) return;
     try {
       const d = JSON.parse(payload.toString());
       _mergeLive(topic, d);
