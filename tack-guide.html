@@ -1293,14 +1293,35 @@ function saveMarkV2() {
   }));
 }
 
+function getVmcSweepBounds(isUpwind) {
+  const polar = RaceCore.getPolar && RaceCore.getPolar();
+  const rows = polar && Array.isArray(polar.twa_rows)
+    ? polar.twa_rows.filter(v => typeof v === 'number' && !isNaN(v))
+    : [];
+  if (!rows.length) return null;
+
+  const validRows = rows.map(v => Math.abs(v)).filter(v => v >= 0 && v <= 180);
+  if (!validRows.length) return null;
+
+  const subset = validRows.filter(v => isUpwind ? v < 90 : v > 90);
+  if (!subset.length) return null;
+
+  return {
+    min: Math.min(...subset),
+    max: Math.max(...subset),
+  };
+}
+
 // ── VMC-optimal COG via full polar sweep ────────────────────────────────
 // leg: 'current' = this tack, 'post' = after tack/gybe (opposite tack)
 function findVmcOptimalCog(twd, tws, markBearing, isUpwind, onPort, leg) {
   // Port tack: COG = TWD + |TWA| → sign +1; Starboard: COG = TWD − |TWA| → sign -1
   const signCurrent = onPort ? +1 : -1;
   const sign = leg === 'post' ? -signCurrent : signCurrent;
-  const twaMin = isUpwind ? 20 : 90;
-  const twaMax = isUpwind ? 85 : 170;
+  const bounds = getVmcSweepBounds(isUpwind);
+  const twaMin = bounds ? Math.ceil(bounds.min) : (isUpwind ? 20 : 90);
+  const twaMax = bounds ? Math.floor(bounds.max) : (isUpwind ? 85 : 170);
+  if (twaMin > twaMax) return null;
 
   let bestVmc = -Infinity, bestTwa = null, bestSog = 0;
 
