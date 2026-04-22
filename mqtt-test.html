@@ -207,6 +207,9 @@ input[type=checkbox] { width: auto; margin-right: 6px; vertical-align: middle; }
       <div>
         <label for="cfgHost">Host / IP</label>
         <input id="cfgHost" type="text" value="esp-nmea.local" autocorrect="off" autocapitalize="none" spellcheck="false">
+        <div id="localWarn" style="display:none; margin-top:4px; font-size:0.68rem; color:var(--warn);">
+          ⚠ Chrome cannot resolve <code>.local</code> — use the ESP's IP address instead.
+        </div>
       </div>
       <div>
         <label for="cfgPort">Port</label>
@@ -272,8 +275,8 @@ input[type=checkbox] { width: auto; margin-right: 6px; vertical-align: middle; }
       Tests if the TCP/WS layer works at all — useful when MQTT.js fails silently.
     </div>
     <div class="btn-row">
-      <button class="btn" onclick="doRawWS()">Test Raw WS</button>
-      <button class="btn" onclick="doRawWSS()">Test Raw WSS</button>
+      <button class="btn" onclick="doRawWS(true)">Raw WS + 'mqtt' subprotocol</button>
+      <button class="btn" onclick="doRawWS(false)">Raw WS — no subprotocol</button>
       <button class="btn" onclick="doFetch()">HTTP Reachability</button>
     </div>
     <div id="rawResult" class="ws-status"><span class="tag idle">Not tested</span></div>
@@ -444,6 +447,9 @@ function doConnect() {
     clean,
     clientId,
     protocolVersion: 4,
+    // Skip Sec-WebSocket-Protocol: mqtt negotiation — Chrome drops the
+    // connection if the ESP doesn't echo the subprotocol back in its 101.
+    wsOptions: { protocols: [] },
   };
 
   try {
@@ -551,22 +557,16 @@ function doPing() {
 }
 
 // ── Raw WebSocket test ─────────────────────────────────────────────────────
-function doRawWS() {
+function doRawWS(withSubprotocol = true) {
   const host = document.getElementById('cfgHost').value.trim();
   const port = document.getElementById('cfgPort').value.trim();
   const path = document.getElementById('cfgPath').value.trim();
-  _testRawWS(`ws://${host}:${port}${path}`);
+  _testRawWS(`ws://${host}:${port}${path}`, withSubprotocol);
 }
 
-function doRawWSS() {
-  const host = document.getElementById('cfgHost').value.trim();
-  const port = document.getElementById('cfgPort').value.trim();
-  const path = document.getElementById('cfgPath').value.trim();
-  _testRawWS(`wss://${host}:${port}${path}`);
-}
-
-function _testRawWS(url) {
-  log('WS', `Raw WebSocket test → ${url}`);
+function _testRawWS(url, withSubprotocol = true) {
+  const proto = withSubprotocol ? "['mqtt']" : 'none';
+  log('WS', `Raw WebSocket test → ${url}  subprotocol: ${proto}`);
   document.getElementById('rawResult').innerHTML = '<span class="tag idle">Testing…</span>';
   const t0 = Date.now();
   let ws;
@@ -576,23 +576,32 @@ function _testRawWS(url) {
     try { ws.close(); } catch(e) {}
   }, 8000);
   try {
-    ws = new WebSocket(url, ['mqtt']);
+    ws = withSubprotocol ? new WebSocket(url, ['mqtt']) : new WebSocket(url);
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => {
       clearTimeout(timer);
       const dt = Date.now() - t0;
-      log('WS', `WebSocket opened in ${dt}ms — protocol="${ws.protocol}" — closing (test only)`);
-      document.getElementById('rawResult').innerHTML = `<span class="tag ok">Open in ${dt}ms — protocol="${ws.protocol || 'none'}"</span>`;
+      const agreedProto = ws.protocol || '(none — server did not echo subprotocol)';
+      log('WS', `WebSocket opened in ${dt}ms — agreed protocol: ${agreedProto}`);
+      if (withSubprotocol && !ws.protocol) {
+        log('WARN', `Server did not echo "mqtt" subprotocol — Chrome will reject this; Safari won't`);
+      }
+      document.getElementById('rawResult').innerHTML = `<span class="tag ok">Open in ${dt}ms — protocol: ${escHtml(agreedProto)}</span>`;
       ws.close();
     };
     ws.onerror = (e) => {
-      clearTimeout(timer);
-      log('WS', 'WebSocket error: ' + (e.message || 'unknown (check console)'));
-      document.getElementById('rawResult').innerHTML = '<span class="tag fail">Error — see log</span>';
+      log('WS', 'WebSocket error event fired (browser hides the real reason here)');
     };
     ws.onclose = (e) => {
       clearTimeout(timer);
-      log('WS', `WebSocket closed: code=${e.code} reason="${e.reason}" wasClean=${e.wasClean}`);
+      log('WS', `WebSocket closed: code=${e.code} reason="${e.reason || '(none)'}" wasClean=${e.wasClean}`);
+      if (e.code === 1006) {
+        log('ERR', 'Code 1006 = connection refused/blocked before handshake. Chrome hides the real error from JS. Check:');
+        log('ERR', '  1. DevTools Console (F12) — look for the actual error message there');
+        log('ERR', '  2. Try Chrome Incognito (⌘+Shift+N) — rules out extensions (uBlock, security tools)');
+        log('ERR', '  3. Try HTTP reachability test below — confirms basic TCP to the host');
+        document.getElementById('rawResult').innerHTML = '<span class="tag fail">Blocked before handshake (code 1006) — see log</span>';
+      }
     };
     ws.onmessage = (e) => {
       log('WS', `Raw data received (${typeof e.data === 'string' ? e.data.length + ' chars' : e.data.byteLength + ' bytes'})`);
@@ -704,8 +713,30 @@ function checkHttps() {
   document.getElementById('btnConnect').title = 'Cannot connect: page is on HTTPS, ws:// is blocked';
 }
 
+// ── Auto-fill host from page IP ────────────────────────────────────────────
+function autoFillHost() {
+  const hostField = document.getElementById('cfgHost');
+  if (location.protocol === 'http:' && /^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)) {
+    // Page was loaded from an IP — almost certainly the ESP itself.
+    // Use that IP so Chrome (which can't do mDNS) connects correctly.
+    hostField.value = location.hostname;
+    log('SYS', `Page served from IP ${location.hostname} — using it as MQTT host automatically`);
+  } else {
+    log('WARN', `Host is set to "${hostField.value}". Chrome cannot resolve .local mDNS names — use the ESP's IP address instead (e.g. 192.168.x.x)`);
+  }
+  hostField.addEventListener('input', warnIfLocal);
+  warnIfLocal();
+}
+
+function warnIfLocal() {
+  const host = document.getElementById('cfgHost').value.trim();
+  const warn = document.getElementById('localWarn');
+  warn.style.display = host.endsWith('.local') ? 'block' : 'none';
+}
+
 // ── Boot ───────────────────────────────────────────────────────────────────
 checkHttps();
+autoFillHost();
 renderDevInfo();
 log('SYS', 'MQTT Tester ready — configure and press Connect');
 </script>

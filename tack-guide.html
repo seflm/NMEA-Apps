@@ -1060,6 +1060,30 @@ try {
 // ── Live data ───────────────────────────────────────────────────────────
 let _live = {};
 let _mqttConnected = false;
+let _wakeLockSentinel = null;
+
+async function requestWakeLock() {
+  if (!('wakeLock' in navigator)) return;
+  try {
+    _wakeLockSentinel = await navigator.wakeLock.request('screen');
+    _wakeLockSentinel.addEventListener('release', () => {
+      _wakeLockSentinel = null;
+    });
+  } catch (e) {
+    // Ignore wake lock errors (unsupported context, low battery, permissions, etc.)
+  }
+}
+
+async function releaseWakeLock() {
+  if (!_wakeLockSentinel) return;
+  try {
+    await _wakeLockSentinel.release();
+  } catch (e) {
+    // Ignore release errors.
+  } finally {
+    _wakeLockSentinel = null;
+  }
+}
 
 // ── Init ────────────────────────────────────────────────────────────────
 const state = RaceCore.loadState();
@@ -1088,6 +1112,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   RaceCore.on('data', ({ live }) => { _live = live; updateDisplay(live); });
+
+  requestWakeLock();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+  });
+  window.addEventListener('beforeunload', releaseWakeLock);
 });
 
 // ── Polar interpolation ─────────────────────────────────────────────────
@@ -1236,7 +1270,8 @@ function saveMarkV2() {
 // ── VMC-optimal COG via full polar sweep ────────────────────────────────
 // leg: 'current' = this tack, 'post' = after tack/gybe (opposite tack)
 function findVmcOptimalCog(twd, tws, markBearing, isUpwind, onPort, leg) {
-  const signCurrent = onPort ? -1 : +1;
+  // Port tack: COG = TWD + |TWA| → sign +1; Starboard: COG = TWD − |TWA| → sign -1
+  const signCurrent = onPort ? +1 : -1;
   const sign = leg === 'post' ? -signCurrent : signCurrent;
   const twaMin = isUpwind ? 20 : 90;
   const twaMax = isUpwind ? 85 : 170;

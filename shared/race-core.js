@@ -883,6 +883,18 @@ function mqttConnect(host, port) {
   host = host || _state.mqtt.host || 'esp-nmea.local';
   port = port || _state.mqtt.port || 9001;
 
+  // Chrome (and Android Chrome) do not resolve .local mDNS hostnames — only
+  // Safari/Bonjour does. When the page is served over HTTP directly from an
+  // IP address (i.e. from the ESP itself), use that IP as the broker host so
+  // Chrome can reach it without mDNS.
+  if (host === 'esp-nmea.local' &&
+      typeof location !== 'undefined' &&
+      location.protocol === 'http:' &&
+      /^\d+\.\d+\.\d+\.\d+$/.test(location.hostname)) {
+    console.log('[RaceCore] Auto-using page IP as MQTT host:', location.hostname);
+    host = location.hostname;
+  }
+
   if (_mqttClient) {
     try { _mqttClient.end(true); } catch (e) {}
   }
@@ -898,6 +910,12 @@ function mqttConnect(host, port) {
     protocolVersion: 4,
     clean:           true,
     clientId:        'race-assistant-' + Math.random().toString(16).substr(2, 8),
+    // Skip Sec-WebSocket-Protocol negotiation. Chrome requires the server to
+    // echo back 'mqtt' in the 101 response; most ESP firmware doesn't, so
+    // Chrome drops the connection. Sending no subprotocol means no echo is
+    // expected, which works in all browsers. Safari was lenient about the
+    // missing echo; Chrome and Android Chrome are not.
+    wsOptions: { protocols: [] },
   });
 
   _mqttClient.on('connect', () => {
